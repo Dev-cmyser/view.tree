@@ -1,39 +1,61 @@
-((component_name) @constructor)
+; ==== Компоненты ====
+(component_name) @constructor
 
-;; property_name — highlight as property
-((property_name) @property)
+; ==== Свойства ====
+; key: property_id внутри property_line
+(property_line
+  key: (property_id) @property)
 
-;; binding symbols like <= => <=> — highlight as operator
-((binding) @operator)
+; инлайновые свойства в subcomponent_line
+(subcomponent_line
+  (property_line
+    key: (property_id) @property))
 
-;; string_literal — highlight as string
-((string_literal) @string)
+; ==== Операторы биндингов ====
+(bind_op) @operator
 
-;; localization_marker (@) — highlight as punctuation
-((localization_marker) @punctuation.special)
+; правая часть биндинга
+(binding_rhs
+  (property_id) @variable)
+(binding_rhs
+  (component_name) @type)
+(binding_rhs
+  (string_literal) @string)
+(binding_rhs
+  (number) @number)
+(binding_rhs
+  (boolean) @constant.builtin)
+(binding_rhs
+  (null_kw) @constant.builtin)
+(dash_end) @punctuation.delimiter
 
-;; / and * — highlight as punctuation too
-((list_marker) @punctuation.list_marker)
-((dict_marker) @punctuation.special)
-((parameter) @punctuation.special)
-((caret) @punctuation.special)
-((css_variable) @punctuation.special)
+; ==== Литералы / примитивы ====
+(string_literal) @string
+(number) @number
+(boolean) @constant.builtin
+(null_kw) @constant.builtin
 
-;; numbers, booleans, null => highlight as constants
-((primitive_literal) @constant)
-; ((null_value) @constant)
+; ==== Списки / словари / спецстроки ====
+(list_marker) @punctuation.special    ; "/"
+(dict_marker) @punctuation.special    ; "*"
+(typed_list) @constructor             ; "/ $Type" — можно как тип
+(caret_line) @punctuation.special     ; "^"
 
-;; optional: highlight entire component_declaration as keyword
-((component_declaration) @keyword)
+; ==== Локализация (@ \Text) ====
+; У тебя @ — часть узла localized_string, отдельного токена нет.
+; Красим целиком как "special string":
+(localized_string) @string.special
 
-;; or highlight the (identifier) inside it as a type
-((component_declaration (identifier)) @type)
+; ==== Идентификаторы ====
+(property_id) @variable
+(ident) @variable
 
-;; highlight property
-((property) @property)
+; ==== Отступы / комментарии ====
+(indent) @punctuation.whitespace
+(remark_top) @comment
+(remark_line) @comment
 
-;; highlight indent (tabs) as punctuation (optional)
-((indent) @punctuation)
-
-;; highlight any standalone identifier
-((identifier) @variable)
+; ==== Строка подкомпонента: "<= name $Type" ====
+(subcomponent_line) @keyword
+(subcomponent_line name: (ident) @variable)
+(subcomponent_line type: (component_name) @type)

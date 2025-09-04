@@ -1,0 +1,6 @@
+{
+	"parser-directories": ["./"],
+	"scopes": {
+		"source.viewtree": ["viewtree"]
+	}
+}

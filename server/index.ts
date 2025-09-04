@@ -8,7 +8,7 @@ import {
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import Parser from 'tree-sitter'
-import ViewTree from '../tree-sitter/bindings/node'
+import ViewTree from 'tree-sitter-viewtree'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
