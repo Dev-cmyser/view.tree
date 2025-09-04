@@ -1,6 +1,6 @@
 {
   "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
-  "name": "molviewtree",
+  "name": "viewtree",
   "rules": {
     "source_file": {
       "type": "REPEAT",
@@ -13,7 +13,7 @@
           },
           {
             "type": "SYMBOL",
-            "name": "remark_line"
+            "name": "remark_top"
           },
           {
             "type": "SYMBOL",
@@ -31,19 +31,19 @@
       "value": "\\t+"
     },
     "blank_line": {
+      "type": "SYMBOL",
+      "name": "newline"
+    },
+    "remark_top": {
       "type": "SEQ",
       "members": [
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "indent"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
+          "type": "STRING",
+          "value": "-"
+        },
+        {
+          "type": "PATTERN",
+          "value": ".*"
         },
         {
           "type": "SYMBOL",
@@ -112,6 +112,10 @@
             {
               "type": "SYMBOL",
               "name": "remark_line"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "indented_blank"
             }
           ]
         },
@@ -145,49 +149,55 @@
       }
     },
     "css_var": {
-      "type": "PATTERN",
-      "value": "--[A-Za-z0-9_-]+"
-    },
-    "ident": {
-      "type": "PATTERN",
-      "value": "[A-Za-z_$][A-Za-z0-9_$-]*"
-    },
-    "prop_suffix": {
-      "type": "PATTERN",
-      "value": "[*!?]+"
-    },
-    "property_id": {
       "type": "TOKEN",
       "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "css_var"
-              },
-              {
-                "type": "PATTERN",
-                "value": "[A-Za-z_$][A-Za-z0-9_$-]*"
-              }
-            ]
-          },
-          {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "prop_suffix"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          }
-        ]
+        "type": "PATTERN",
+        "value": "--[A-Za-z0-9_-]+"
       }
+    },
+    "ident": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "[A-Za-z_$][A-Za-z0-9_$-]*"
+      }
+    },
+    "prop_suffix": {
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "[*!?]+"
+      }
+    },
+    "property_id": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "css_var"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "ident"
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "prop_suffix"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        }
+      ]
     },
     "number": {
       "type": "TOKEN",
@@ -313,6 +323,10 @@
     "caret_line": {
       "type": "STRING",
       "value": "^"
+    },
+    "indented_blank": {
+      "type": "STRING",
+      "value": ""
     },
     "remark_line": {
       "type": "SEQ",

@@ -1,7 +1,7 @@
 {
 	"grammars": [
 		{
-			"name": "view.tree",
+			"name": "viewtree",
 			"file-types": ["view.tree"],
 			"highlights": "../highlights/TreeSitter/highlights.scm"
 		}

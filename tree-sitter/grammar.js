@@ -1,28 +1,51 @@
 module.exports = grammar({
-	name: 'view.tree',
+	name: 'viewtree',
 
-	// только пробелы как "extras", табы/переносы — значимы
 	extras: $ => [/ +/],
 
 	conflicts: $ => [[$.property_line, $.subcomponent_line]],
 
 	rules: {
-		source_file: $ => repeat(choice($.component_def, $.remark_line, $.blank_line)),
+		source_file: $ =>
+			repeat(
+				choice(
+					$.component_def,
+					$.remark_top, // комментарии на верхнем уровне
+					$.blank_line, // пустые строки БЕЗ отступа
+				),
+			),
 
 		// базовые токены форматирования
 		newline: $ => /\r?\n/,
 		indent: $ => /\t+/,
-		blank_line: $ => seq(optional($.indent), $.newline),
 
+		// Пустая строка на верхнем уровне: НЕТ indent
+		blank_line: $ => $.newline,
+		// Верхнеуровневый комментарий (если нужен)
+		remark_top: $ => seq('-', /.*/, $.newline),
 		// $Name $Base
 		component_def: $ =>
-			seq(field('name', $.component_name), field('base', $.component_name), $.newline, repeat($.indented_node)),
+			seq(
+				field('name', $.component_name),
+				field('base', $.component_name),
+				$.newline,
+				// тело может быть пустым; конфликт уйдёт, т.к. indent не разрешён наверху в blank_line
+				repeat($.indented_node),
+			),
 
-		// узел с обязательным таб-отступом относительно родителя
+		// Вложенный узел: начинается с indent, затем содержимое, затем перевод строки,
+		// после чего могут идти ещё вложенные узлы
 		indented_node: $ =>
 			seq(
 				$.indent,
-				choice($.property_line, $.subcomponent_line, $.string_line, $.caret_line, $.remark_line),
+				choice(
+					$.property_line,
+					$.subcomponent_line,
+					$.string_line,
+					$.caret_line,
+					$.remark_line, // вложенный комментарий
+					$.indented_blank, // пустая строка внутри блока (опционально)
+				),
 				$.newline,
 				repeat($.indented_node),
 			),
@@ -31,9 +54,9 @@ module.exports = grammar({
 		component_name: $ => token(seq('$', /[A-Za-z_][A-Za-z0-9_]*/)),
 		// ключ свойства может быть CSS var или обычный id; допускаем суффиксы * ! ?
 		css_var: $ => token(/--[A-Za-z0-9_-]+/),
-		ident: $ => /[A-Za-z_$][A-Za-z0-9_$-]*/,
-		prop_suffix: $ => /[*!?]+/,
-		property_id: $ => token(seq(choice($.css_var, /[A-Za-z_$][A-Za-z0-9_$-]*/), optional($.prop_suffix))),
+		ident: $ => token(/[A-Za-z_$][A-Za-z0-9_$-]*/),
+		prop_suffix: $ => token.immediate(/[*!?]+/),
+		property_id: $ => seq(choice($.css_var, $.ident), optional($.prop_suffix)),
 
 		// литералы
 		number: $ => token(/[+\-]?(?:NaN|Infinity|\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/),
@@ -52,7 +75,13 @@ module.exports = grammar({
 
 		// специальные строки-узлы
 		caret_line: $ => '^', // наследование словаря
-		remark_line: $ => seq('-', /.*/), // комментарий/отключённый узел целиком
+
+		// Пустая строка внутри блока: это просто indent + newline без содержимого
+		// (если хотите строгость как у $mol, можно НЕ добавлять это правило)
+		indented_blank: $ => '',
+
+		// Вложенный комментарий (начинается сразу после indent)
+		remark_line: $ => seq('-', /.*/),
 
 		// локализация: "@ \Text"
 		localized_string: $ => seq('@', / +/, $.string_literal),
