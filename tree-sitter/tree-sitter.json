@@ -1,0 +1,22 @@
+{
+	"grammars": [
+		{
+			"name": "view.tree",
+			"file-types": ["view.tree"],
+			"highlights": "../highlights/TreeSitter/highlights.scm"
+		}
+	],
+	"bindings": {
+		"c": true,
+		"go": false,
+		"node": false,
+		"python": false,
+		"rust": false,
+		"swift": false,
+		"typescript": true,
+		"javascript": true
+	},
+	"metadata": {
+		"version": "0.1.0"
+	}
+}
