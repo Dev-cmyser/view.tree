@@ -5,7 +5,7 @@
 		"prestart": "cd tree-sitter && tree-sitter build --wasm",
 		"start": " cd tree-sitter && tree-sitter playground",
 		"tree": " cd tree-sitter && tree-sitter",
-		"gen": " cd tree-sitter && tree-sitter generate"
+		"gen": " cd tree-sitter && tree-sitter generate && npm i "
 	},
 	"dependencies": {
 		"tree-sitter": "^0.25.0"

@@ -8,7 +8,7 @@
 		}
 	],
 	"bindings": {
-		"c": true,
+		"c": false,
 		"go": false,
 		"node": true,
 		"python": false,
