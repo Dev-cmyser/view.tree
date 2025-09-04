@@ -2,9 +2,10 @@
 	"name": "view.tree",
 	"version": "0.1.0",
 	"scripts": {
-		"prestart": "tree-sitter build --wasm",
-		"tree": "tree-sitter",
-		"start": "tree-sitter playground"
+		"prestart": "cd tree-sitter && tree-sitter build --wasm",
+		"start": " cd tree-sitter && tree-sitter playground",
+		"tree": " cd tree-sitter && tree-sitter",
+		"gen": " cd tree-sitter && tree-sitter generate"
 	},
 	"dependencies": {
 		"tree-sitter": "^0.25.0"

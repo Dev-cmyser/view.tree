@@ -3,18 +3,17 @@
 		{
 			"name": "viewtree",
 			"file-types": ["view.tree"],
-			"highlights": "../highlights/TreeSitter/highlights.scm"
+			"highlights": "../highlights/TreeSitter/highlights.scm",
+			"scope": "source.viewtree"
 		}
 	],
 	"bindings": {
 		"c": true,
 		"go": false,
-		"node": false,
+		"node": true,
 		"python": false,
 		"rust": false,
-		"swift": false,
-		"typescript": true,
-		"javascript": true
+		"swift": false
 	},
 	"metadata": {
 		"version": "0.1.0"
