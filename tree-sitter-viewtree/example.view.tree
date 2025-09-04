@@ -2,7 +2,6 @@ $mol_theme_demo $mol_example_large
 	plugins /
 		<= hue_spread $mol_theme_auto
 	style *
-    	-
 		--mol_them <= hue_spread \sdf
 		--mol_theme_hue_spread <= hue_spread_deg \
 	sub /
