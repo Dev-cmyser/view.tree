@@ -148,13 +148,6 @@
         ]
       }
     },
-    "css_var": {
-      "type": "TOKEN",
-      "content": {
-        "type": "PATTERN",
-        "value": "--[A-Za-z0-9_-]+"
-      }
-    },
     "ident": {
       "type": "TOKEN",
       "content": {
@@ -173,17 +166,8 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "css_var"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "ident"
-            }
-          ]
+          "type": "SYMBOL",
+          "name": "ident"
         },
         {
           "type": "CHOICE",

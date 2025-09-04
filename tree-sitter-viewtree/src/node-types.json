@@ -209,10 +209,6 @@
       "required": true,
       "types": [
         {
-          "type": "css_var",
-          "named": true
-        },
-        {
           "type": "ident",
           "named": true
         },
@@ -464,10 +460,6 @@
     "named": true
   },
   {
-    "type": "css_var",
-    "named": true
-  },
-  {
     "type": "dict_marker",
     "named": true
   },
@@ -497,11 +489,11 @@
   },
   {
     "type": "number",
-    "named": true
+    "named": false
   },
   {
     "type": "number",
-    "named": false
+    "named": true
   },
   {
     "type": "prop_suffix",

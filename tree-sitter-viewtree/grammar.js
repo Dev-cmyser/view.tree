@@ -45,11 +45,9 @@ module.exports = grammar({
 
 		// идентификаторы
 		component_name: $ => token(seq('$', /[A-Za-z_][A-Za-z0-9_]*/)),
-		// ключ свойства может быть CSS var или обычный id; допускаем суффиксы * ! ?
-		css_var: $ => token(/--[A-Za-z0-9_-]+/),
 		ident: $ => token(/[A-Za-z_$][A-Za-z0-9_$-]*/),
 		prop_suffix: $ => token.immediate(/[*!?]+/),
-		property_id: $ => seq(choice($.css_var, $.ident), optional($.prop_suffix)),
+		property_id: $ => seq($.ident, optional($.prop_suffix)),
 
 		// литералы
 		number: $ => token(/[+\-]?(?:NaN|Infinity|\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/),
