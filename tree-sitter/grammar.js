@@ -3,8 +3,6 @@ module.exports = grammar({
 
 	extras: $ => [/ +/],
 
-	conflicts: $ => [[$.property_line, $.subcomponent_line]],
-
 	rules: {
 		source_file: $ =>
 			repeat(
@@ -36,18 +34,13 @@ module.exports = grammar({
 		// Вложенный узел: начинается с indent, затем содержимое, затем перевод строки,
 		// после чего могут идти ещё вложенные узлы
 		indented_node: $ =>
-			seq(
-				$.indent,
-				choice(
-					$.property_line,
-					$.subcomponent_line,
-					$.string_line,
-					$.caret_line,
-					$.remark_line, // вложенный комментарий
-					$.indented_blank, // пустая строка внутри блока (опционально)
+			prec.right(
+				seq(
+					$.indent,
+					choice($.property_line, $.subcomponent_line, $.string_line, $.caret_line, $.remark_line),
+					$.newline,
+					repeat($.indented_node),
 				),
-				$.newline,
-				repeat($.indented_node),
 			),
 
 		// идентификаторы
@@ -75,10 +68,6 @@ module.exports = grammar({
 
 		// специальные строки-узлы
 		caret_line: $ => '^', // наследование словаря
-
-		// Пустая строка внутри блока: это просто indent + newline без содержимого
-		// (если хотите строгость как у $mol, можно НЕ добавлять это правило)
-		indented_blank: $ => '',
 
 		// Вложенный комментарий (начинается сразу после indent)
 		remark_line: $ => seq('-', /.*/),

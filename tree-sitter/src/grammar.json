@@ -84,53 +84,53 @@
       ]
     },
     "indented_node": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "indent"
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "property_line"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "subcomponent_line"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "string_line"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "caret_line"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "remark_line"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "indented_blank"
-            }
-          ]
-        },
-        {
-          "type": "SYMBOL",
-          "name": "newline"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
             "type": "SYMBOL",
-            "name": "indented_node"
+            "name": "indent"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "property_line"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "subcomponent_line"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "string_line"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "caret_line"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "remark_line"
+              }
+            ]
+          },
+          {
+            "type": "SYMBOL",
+            "name": "newline"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SYMBOL",
+              "name": "indented_node"
+            }
           }
-        }
-      ]
+        ]
+      }
     },
     "component_name": {
       "type": "TOKEN",
@@ -323,10 +323,6 @@
     "caret_line": {
       "type": "STRING",
       "value": "^"
-    },
-    "indented_blank": {
-      "type": "STRING",
-      "value": ""
     },
     "remark_line": {
       "type": "SEQ",
@@ -578,12 +574,7 @@
       "value": " +"
     }
   ],
-  "conflicts": [
-    [
-      "property_line",
-      "subcomponent_line"
-    ]
-  ],
+  "conflicts": [],
   "precedences": [],
   "externals": [],
   "inline": [],
