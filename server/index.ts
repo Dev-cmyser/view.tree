@@ -9,7 +9,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import Parser from 'tree-sitter'
-import ViewTreeLang from '../tree-sitter-viewtree'
+import ViewTreeLang from 'tree-sitter-viewtree'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
