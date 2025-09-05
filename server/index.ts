@@ -1,4 +1,3 @@
-import * as path from 'path'
 import {
 	createConnection,
 	ProposedFeatures,
@@ -8,30 +7,39 @@ import {
 	CompletionItem,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
-import Parser from 'web-tree-sitter'
+
+import Parser from 'tree-sitter'
+import ViewTreeLang from '../tree-sitter-viewtree'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 
-const wasmPath = path.join(__dirname, '..', 'tree-sitter', 'tree-sitter-viewtree.wasm')
-
-let parser: any
-let parserReady: Promise<void> = (async () => {
-	await Parser.init()
-	const Lang = await Parser.Language.load(wasmPath)
-	parser = new Parser()
-	parser.setLanguage(Lang)
-})()
+const parser = new Parser()
+parser.setLanguage(ViewTreeLang as unknown as Parser.Language)
 
 connection.onInitialize((_params: InitializeParams) => ({
 	capabilities: {
 		textDocumentSync: TextDocumentSyncKind.Incremental,
 		completionProvider: { triggerCharacters: ['.', ':'] },
-		definitionProvider: true,
-		referencesProvider: true,
-		renameProvider: { prepareProvider: true },
+		definitionProvider: false,
+		referencesProvider: false,
+		renameProvider: { prepareProvider: false },
 		semanticTokensProvider: {
-			legend: { tokenTypes: ['variable', 'function', 'keyword', 'string', 'number'], tokenModifiers: [] },
+			legend: {
+				tokenTypes: [
+					'namespace',
+					'type',
+					'class',
+					'property',
+					'variable',
+					'string',
+					'number',
+					'operator',
+					'comment',
+					'keyword',
+				],
+				tokenModifiers: [],
+			},
 			range: false,
 			full: true,
 		},
@@ -39,13 +47,17 @@ connection.onInitialize((_params: InitializeParams) => ({
 }))
 
 documents.onDidChangeContent(async change => {
-	await parserReady
 	const text = change.document.getText()
 	const tree = parser.parse(text)
+
+	// тут можно делать валидации по синтаксису и присылать diagnostics
 	connection.sendDiagnostics({ uri: change.document.uri, diagnostics: [] })
+
+	// (по желанию) connection.console.log(JSON.stringify(tree.rootNode.toString()))
 })
 
 connection.onCompletion((): CompletionItem[] => {
+	// быстрые болванки — потом заменишь на контекстные по AST
 	return ['view', 'sub', 'attr', 'dom_name'].map(l => ({ label: l }))
 })
 
