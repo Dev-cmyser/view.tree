@@ -1,0 +1,72 @@
+{
+	"name": "view.tree",
+	"scopeName": "source.viewtree",
+	"fileTypes": ["view.tree"],
+	"patterns": [
+		{ "include": "#component-def" },
+		{ "include": "#subcomponent-line" },
+		{ "include": "#property-line" },
+		{ "include": "#strings" },
+		{ "include": "#comments" },
+		{ "include": "#markers" }
+	],
+	"repository": {
+		"component-def": {
+			"name": "meta.component-def.viewtree",
+			"match": "^\\s*\\$[A-Za-z_][\\w_]*\\s+\\$[A-Za-z_][\\w_]*\\s*$",
+			"captures": {
+				"0": { "name": "entity.name.type.class.viewtree" }
+			}
+		},
+		"subcomponent-line": {
+			"name": "meta.subcomponent.viewtree",
+			"match": "^(\\t+)(<=)\\s+([A-Za-z_$][\\w$-]*)(\\s+\\$[A-Za-z_][\\w_]*)?",
+			"captures": {
+				"1": { "name": "punctuation.whitespace.indent.viewtree" },
+				"2": { "name": "keyword.operator.assignment.viewtree" },
+				"3": { "name": "variable.other.readwrite.viewtree" },
+				"4": { "name": "entity.name.type.viewtree" }
+			}
+		},
+		"property-line": {
+			"name": "meta.property.viewtree",
+			"match": "^(\\t+)([A-Za-z_$][\\w$-]*)([*!?]+)?(?:\\s*(<=>|<=|=>)\\s*(?:\\$[A-Za-z_][\\w_]*|[A-Za-z_$][\\w$-]*(?:[*!?]+)?|[-+]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|true|false|null|\\\\.*|/(?:\\s*\\$?[A-Za-z_][\\w_]*)?)\\s*-?)?",
+			"captures": {
+				"1": { "name": "punctuation.whitespace.indent.viewtree" },
+				"2": { "name": "variable.other.member.viewtree" },
+				"3": { "name": "storage.modifier.viewtree" },
+				"4": { "name": "keyword.operator.assignment.viewtree" }
+			}
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.other.viewtree",
+					"match": "^\\t*\\\\.*$"
+				},
+				{
+					"name": "string.quoted.other.localized.viewtree",
+					"match": "^\\t*@\\s+\\\\.*$"
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.dash.viewtree",
+					"match": "^(?:-|\\t+-)\\s.*$"
+				}
+			]
+		},
+		"markers": {
+			"patterns": [
+				{
+					"name": "punctuation.definition.list.viewtree",
+					"match": "\\s/\\s?(?:\\$[A-Za-z_][\\w_]*|string|number|boolean|[A-Za-z_$][\\w$-]*)?"
+				},
+				{ "name": "punctuation.definition.dict.viewtree", "match": "\\s\\*" },
+				{ "name": "punctuation.definition.caret.viewtree", "match": "^\\t*\\^\\s*$" }
+			]
+		}
+	}
+}

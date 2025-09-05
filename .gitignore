@@ -5,6 +5,7 @@ target/
 build/
 prebuilds/
 node_modules/
+out/
 
 # Swift artifacts
 .build/

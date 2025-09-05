@@ -2,5 +2,18 @@
 	"parser-directories": ["./"],
 	"scopes": {
 		"source.viewtree": ["viewtree"]
-	}
+	},
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "CommonJS",
+		"lib": ["ES2020"],
+		"rootDir": ".",
+		"outDir": "out",
+		"strict": true,
+		"moduleResolution": "Node",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true
+	},
+	"include": ["server/**/*.ts"]
 }

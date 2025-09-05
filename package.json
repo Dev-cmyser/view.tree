@@ -6,7 +6,9 @@
 		"start": " cd tree-sitter-viewtree && tree-sitter playground",
 		"tree": " cd tree-sitter-viewtree && tree-sitter",
 		"gen": " cd tree-sitter-viewtree && tree-sitter generate && npm i ",
-		"highlight": " cd tree-sitter-viewtree && tree-sitter generate && npm i "
+		"build": "tsc -p ts-config.json",
+		"start-server": "node out/server/index.js",
+		"watch-server": "tsc -w -p ts-config.json"
 	},
 	"dependencies": {
 		"tree-sitter": "^0.25.0",

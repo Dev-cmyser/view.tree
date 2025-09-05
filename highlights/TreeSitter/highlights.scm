@@ -1,9 +1,12 @@
 ; ===== Компоненты =====
 (component_name) @constructor
+(component_def name: (component_name) @type)
+(component_def base: (component_name) @type.builtin)
 
 ; ===== Свойства =====
 (property_line
   key: (property_id) @property)
+(property_id (prop_suffix) @operator) ; ! ? * помечаем как оператор/модификатор
 (subcomponent_line
   (property_line
     key: (property_id) @property))
@@ -12,8 +15,9 @@
 (bind_op) @operator
 (dash_end) @punctuation.delimiter
 
-; ===== Литералы / примитивы (глобально) =====
+; ===== Литералы / примитивы =====
 (string_literal) @string
+(string_line) @string
 (number) @number
 (boolean) @constant.builtin
 (null_kw) @constant.builtin
