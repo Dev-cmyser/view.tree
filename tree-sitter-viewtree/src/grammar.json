@@ -317,7 +317,11 @@
         },
         {
           "type": "PATTERN",
-          "value": ".*"
+          "value": "[ \\t]+"
+        },
+        {
+          "type": "PATTERN",
+          "value": "[^\\n\\r]*"
         }
       ]
     },

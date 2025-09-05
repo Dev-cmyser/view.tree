@@ -1,21 +1,37 @@
 {
+	"$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
 	"grammars": [
 		{
 			"name": "viewtree",
+			"camelcase": "Viewtree",
+			"title": "Viewtree",
+			"scope": "source.viewtree",
 			"file-types": ["view.tree"],
-			"highlights": "../highlights/TreeSitter/highlights.scm",
-			"scope": "source.viewtree"
+			"injection-regex": "^viewtree$",
+			"class-name": "TreeSitterViewtree"
 		}
 	],
+	"metadata": {
+		"version": "0.1.0",
+		"license": "MIT",
+		"description": "for mol view tree files",
+		"authors": [
+			{
+				"name": "kirill",
+				"email": "kirrallt@mail.ru"
+			}
+		],
+		"links": {
+			"repository": "https://github.com/tree-sitter/tree-sitter-viewtree"
+		}
+	},
 	"bindings": {
 		"c": false,
 		"go": false,
 		"node": true,
 		"python": false,
 		"rust": false,
-		"swift": false
-	},
-	"metadata": {
-		"version": "0.1.0"
+		"swift": false,
+		"zig": false
 	}
 }

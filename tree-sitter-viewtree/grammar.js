@@ -23,13 +23,7 @@ module.exports = grammar({
 		remark_top: $ => seq('-', /.*/, $.newline),
 		// $Name $Base
 		component_def: $ =>
-			seq(
-				field('name', $.component_name),
-				field('base', $.component_name),
-				$.newline,
-				// тело может быть пустым; конфликт уйдёт, т.к. indent не разрешён наверху в blank_line
-				repeat($.indented_node),
-			),
+			seq(field('name', $.component_name), field('base', $.component_name), $.newline, repeat($.indented_node)),
 
 		// Вложенный узел: начинается с indent, затем содержимое, затем перевод строки,
 		// после чего могут идти ещё вложенные узлы
@@ -68,7 +62,7 @@ module.exports = grammar({
 		caret_line: $ => '^', // наследование словаря
 
 		// Вложенный комментарий (начинается сразу после indent)
-		remark_line: $ => seq('-', /.*/),
+		remark_line: $ => seq('-', /[ \t]+/, /[^\n\r]*/),
 
 		// локализация: "@ \Text"
 		localized_string: $ => seq('@', / +/, $.string_literal),
