@@ -2,23 +2,19 @@
 	"name": "view.tree",
 	"version": "0.1.0",
 	"scripts": {
-		"prestart": "cd tree-sitter-viewtree && tree-sitter build --wasm",
-		"start": " cd tree-sitter-viewtree && tree-sitter playground",
-		"tree": " cd tree-sitter-viewtree && tree-sitter",
-		"gen": " cd tree-sitter-viewtree && tree-sitter generate && npm i ",
 		"build": "tsc -p ts-config.json",
-		"start-server": "node out/server/index.js",
+		"start-server": "node --watch  out/server/index.js --stdio",
 		"watch-server": "tsc -w -p ts-config.json"
 	},
 	"dependencies": {
-		"tree-sitter": "^0.25.0",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12",
-		"web-tree-sitter": "^0.25.8",
 		"tree-sitter-viewtree": "file:./tree-sitter-viewtree"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.2",
+		"@types/vscode": "^1.76.0",
+		"vscode-languageclient": "^9.0.1"
 	}
 }
