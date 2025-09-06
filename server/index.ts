@@ -15,7 +15,7 @@ const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 
 const parser = new Parser()
-parser.setLanguage(ViewTreeLang as any)
+parser.setLanguage((ViewTreeLang as any).language)
 
 connection.onInitialize((_params: InitializeParams) => ({
 	capabilities: {
