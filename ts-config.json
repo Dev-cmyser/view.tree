@@ -15,5 +15,5 @@
 		"skipLibCheck": true,
 		"resolveJsonModule": true
 	},
-	"include": ["server/**/*.ts"]
+	"include": ["server/**/*.ts", "vscode/**/*.ts"]
 }
