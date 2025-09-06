@@ -1,10 +1,12 @@
 import {
-	createConnection,
-	ProposedFeatures,
-	TextDocuments,
-	InitializeParams,
-	TextDocumentSyncKind,
-	CompletionItem,
+    createConnection,
+    ProposedFeatures,
+    TextDocuments,
+    InitializeParams,
+    TextDocumentSyncKind,
+    CompletionItem,
+    SemanticTokens,
+    SemanticTokensParams,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
@@ -45,6 +47,9 @@ connection.onInitialize((_params: InitializeParams) => ({
 		},
 	},
 }))
+
+// Minimal semantic tokens: return empty list to satisfy client.
+connection.languages.semanticTokens.on((_params: SemanticTokensParams): SemanticTokens => ({ data: [] }))
 
 documents.onDidChangeContent(async change => {
 	const text = change.document.getText()
