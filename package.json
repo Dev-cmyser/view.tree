@@ -1,6 +1,30 @@
 {
 	"name": "view.tree",
+	"displayName": "view.tree LSP",
+	"description": "Experimental Tree-sitter grammar and LSP for view.tree",
 	"version": "0.1.0",
+	"private": true,
+	"main": "./out/vscode/extension.js",
+	"engines": { "vscode": "^1.76.0" },
+	"activationEvents": [
+		"onLanguage:view.tree"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "view.tree",
+				"aliases": ["view.tree"],
+				"extensions": [".view.tree"]
+			}
+		],
+		"grammars": [
+			{
+				"language": "view.tree",
+				"scopeName": "source.viewtree",
+				"path": "./highlights/TextMate/tmLanguage.json"
+			}
+		]
+	},
 	"scripts": {
 		"build": "tsc -p ts-config.json",
 		"start-server": "node --watch  out/server/index.js --stdio",
