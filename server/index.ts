@@ -10,6 +10,8 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 	Hover,
+	Definition,
+	Location,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
@@ -19,7 +21,7 @@ import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc/offset'
 import { getCompletions } from './completion'
-import { updateIndexForDoc, removeFromIndex } from './indexer'
+import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs } from './indexer'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -29,7 +31,7 @@ connection.onInitialize((_params: InitializeParams) => ({
 	capabilities: {
 		textDocumentSync: TextDocumentSyncKind.Incremental,
 		completionProvider: { triggerCharacters: ['.', ':'] },
-		definitionProvider: false,
+		definitionProvider: true,
 		referencesProvider: false,
 		renameProvider: { prepareProvider: false },
 		semanticTokensProvider: {
@@ -103,6 +105,32 @@ connection.onHover(params => {
     const range = node.span ? spanToRange(node.span) : undefined
     const hover: Hover = { contents: { kind: 'markdown', value: contents }, range }
     return hover
+})
+
+connection.onDefinition(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return null
+    const text = doc.getText()
+    const offset = doc.offsetAt(params.position)
+    const tokenMatch = /([A-Za-z$][\w]*)/.exec(text.slice(offset - 64 < 0 ? 0 : offset - 64, offset + 64))
+    const token = tokenMatch ? tokenMatch[1] : ''
+    if (!token) return null
+
+    const classHits = findClassDefs(token)
+    const propHits = findPropDefs(token)
+
+    const locs: Location[] = []
+    for (const hit of [...classHits, ...propHits]) {
+        locs.push({
+            uri: hit.uri,
+            range: {
+                start: { line: hit.spot.line, character: hit.spot.col },
+                end: { line: hit.spot.line, character: hit.spot.col + hit.spot.length },
+            },
+        })
+    }
+    return (locs.length ? (locs.length === 1 ? locs[0] : locs) : null) as Definition
 })
 
 documents.listen(connection)
