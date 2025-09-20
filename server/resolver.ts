@@ -13,15 +13,16 @@ export function fsPathToUri(fsPath: string): string {
 }
 
 export function classNameToRelPath(name: string): string {
-  // Example: bog_horrorgamelanding_card -> bog/horrorgamelanding/card/card.view.tree
-  const parts = name.split('_')
+  // Example: $mol_image -> mol/image/image.view.tree ; bog_horrorgamelanding_card -> bog/horrorgamelanding/card/card.view.tree
+  const plain = name.replace(/^\$/,'')
+  const parts = plain.split('_')
   const last = parts[parts.length - 1]
   const dir = parts.join('/')
   return `${dir}/${last}.view.tree`
 }
 
 export function classLike(name: string): boolean {
-  // Consider names containing underscore or starting with $ as class-like
-  return /_/ .test(name) || /^\$/.test(name)
+  // Consider names with underscore (after trimming optional $) as class-like
+  const plain = name.replace(/^\$/,'')
+  return /.+_.+/.test(plain)
 }
-

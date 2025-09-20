@@ -11,9 +11,7 @@ export function extractClassRefs(root: Ast): Set<string> {
   const walk = (n: any) => {
     if (!n) return
     const t = String(n.type ?? '')
-    const v = String(n.value ?? '')
     if (t && classLike(t)) out.add(t)
-    if (v && classLike(v)) out.add(v)
     const kids: any[] = (n.kids || []) as any
     for (const k of kids) walk(k)
   }
