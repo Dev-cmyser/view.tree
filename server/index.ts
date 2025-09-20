@@ -12,6 +12,8 @@ import {
 	Hover,
 	Definition,
 	Location,
+	WorkspaceEdit,
+	Range,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
@@ -22,6 +24,7 @@ import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc/offset'
 import { getCompletions } from './completion'
 import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs } from './indexer'
+import { buildSemanticTokens } from './semanticTokens'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -33,7 +36,7 @@ connection.onInitialize((_params: InitializeParams) => ({
 		completionProvider: { triggerCharacters: ['.', ':'] },
 		definitionProvider: true,
 		referencesProvider: true,
-		renameProvider: { prepareProvider: false },
+		renameProvider: { prepareProvider: true },
 		semanticTokensProvider: {
 			legend: {
 				tokenTypes: [
@@ -151,6 +154,69 @@ connection.onReferences(params => {
             end: { line: h.spot.line, character: h.spot.col + h.spot.length },
         },
     }))
+})
+
+// Semantic Tokens (full document)
+connection.languages.semanticTokens.on((params: SemanticTokensParams): SemanticTokens => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    const root = trees.get(uri)
+    const data = buildSemanticTokens(doc as TextDocument, root)
+    return { data }
+})
+
+// Rename support
+function wordRangeAt(doc: TextDocument, offset: number): { range: Range, text: string } | null {
+    const text = doc.getText()
+    const isWord = (ch: string) => /[A-Za-z0-9_$]/.test(ch)
+    if (!text) return null
+    let start = offset
+    let end = offset
+    while (start > 0 && isWord(text[start - 1])) start--
+    while (end < text.length && isWord(text[end])) end++
+    if (start === end) return null
+    // Ensure token starts with letter or $
+    const token = text.slice(start, end)
+    if (!/^[A-Za-z$][\w$]*$/.test(token)) return null
+    return { range: { start: doc.positionAt(start), end: doc.positionAt(end) }, text: token }
+}
+
+connection.onPrepareRename(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return null
+    const offset = doc.offsetAt(params.position)
+    const wr = wordRangeAt(doc, offset)
+    if (!wr) return null
+    return { range: wr.range, placeholder: wr.text }
+})
+
+connection.onRenameRequest(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return null
+    const offset = doc.offsetAt(params.position)
+    const wr = wordRangeAt(doc, offset)
+    if (!wr) return null
+    const oldName = wr.text
+    const newName = params.newName
+    if (oldName === newName) return { changes: {} } as WorkspaceEdit
+
+    const hits = findRefs(oldName)
+    const changes: Record<string, { range: Range, newText: string }[]> = {}
+    for (const h of hits) {
+        const arr = changes[h.uri] ?? []
+        arr.push({
+            range: {
+                start: { line: h.spot.line, character: h.spot.col },
+                end: { line: h.spot.line, character: h.spot.col + h.spot.length },
+            },
+            newText: newName,
+        })
+        changes[h.uri] = arr
+    }
+    const edit: WorkspaceEdit = { changes }
+    return edit
 })
 
 documents.listen(connection)
