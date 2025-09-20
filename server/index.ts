@@ -21,7 +21,7 @@ import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc/offset'
 import { getCompletions } from './completion'
-import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs } from './indexer'
+import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs } from './indexer'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -32,7 +32,7 @@ connection.onInitialize((_params: InitializeParams) => ({
 		textDocumentSync: TextDocumentSyncKind.Incremental,
 		completionProvider: { triggerCharacters: ['.', ':'] },
 		definitionProvider: true,
-		referencesProvider: false,
+		referencesProvider: true,
 		renameProvider: { prepareProvider: false },
 		semanticTokensProvider: {
 			legend: {
@@ -131,6 +131,26 @@ connection.onDefinition(params => {
         })
     }
     return (locs.length ? (locs.length === 1 ? locs[0] : locs) : null) as Definition
+})
+
+connection.onReferences(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return null
+    const text = doc.getText()
+    const offset = doc.offsetAt(params.position)
+    const tokenMatch = /([A-Za-z$][\w]*)/.exec(text.slice(offset - 64 < 0 ? 0 : offset - 64, offset + 64))
+    const token = tokenMatch ? tokenMatch[1] : ''
+    if (!token) return []
+
+    const hits = findRefs(token)
+    return hits.map(h => ({
+        uri: h.uri,
+        range: {
+            start: { line: h.spot.line, character: h.spot.col },
+            end: { line: h.spot.line, character: h.spot.col + h.spot.length },
+        },
+    }))
 })
 
 documents.listen(connection)

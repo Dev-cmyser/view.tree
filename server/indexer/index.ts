@@ -1,8 +1,10 @@
 type Spot = { line: number; col: number; length: number }
 const classDefsByUri = new Map<string, Map<string, Spot>>()
 const propDefsByUri = new Map<string, Map<string, Spot[]>>()
+const textByUri = new Map<string, string>()
 
 export function updateIndexForDoc(uri: string, text: string) {
+  textByUri.set(uri, text)
   const classDefs = new Map<string, Spot>()
   const propDefs = new Map<string, Spot[]>()
 
@@ -43,6 +45,7 @@ export function updateIndexForDoc(uri: string, text: string) {
 export function removeFromIndex(uri: string) {
   classDefsByUri.delete(uri)
   propDefsByUri.delete(uri)
+  textByUri.delete(uri)
 }
 
 export function getAllClasses(): string[] {
@@ -71,6 +74,28 @@ export function findPropDefs(name: string): Array<{ uri: string; spot: Spot }> {
   for (const [uri, map] of propDefsByUri.entries()) {
     const spots = map.get(name)
     if (spots) for (const spot of spots) out.push({ uri, spot })
+  }
+  return out
+}
+
+function escapeRe(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export function findRefs(name: string): Array<{ uri: string; spot: Spot }> {
+  const out: Array<{ uri: string; spot: Spot }> = []
+  const needle = escapeRe(name)
+  const re = new RegExp(`(?<![A-Za-z0-9_])${needle}(?![A-Za-z0-9_])`, 'g')
+  for (const [uri, text] of textByUri.entries()) {
+    const lines = text.split(/\r?\n/)
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      let m: RegExpExecArray | null
+      re.lastIndex = 0
+      while ((m = re.exec(line))) {
+        out.push({ uri, spot: { line: i, col: m.index, length: name.length } })
+      }
+    }
   }
   return out
 }
