@@ -14,6 +14,7 @@ import {
 	Location,
 	WorkspaceEdit,
 	Range,
+	MessageType,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import * as fs from 'fs/promises'
@@ -34,9 +35,11 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 const trees = new Map<string, Ast>()
 
 let workspaceRootFs = ''
+const log = (msg: string) => { connection.console.log(msg) }
+
 connection.onInitialize((params: InitializeParams) => {
     const ws = params.workspaceFolders?.map(f => f.uri).join(', ') || params.rootUri || 'unknown'
-    connection.console.log(`[view.tree] onInitialize: workspace=${ws}`)
+    log(`[view.tree] onInitialize: workspace=${ws}`)
     const rootUri = params.workspaceFolders?.[0]?.uri || params.rootUri || ''
     workspaceRootFs = rootUri ? uriToFsPath(rootUri) : ''
     return {
@@ -69,10 +72,10 @@ documents.onDidChangeContent(async change => {
     const { tree, diagnostics } = parseWithDiagnostics(text, uri)
     if (tree) {
         trees.set(uri, tree)
-        connection.console.log(`[mol_tree2] parsed ${uri}:\n${tree.toString()}`)
+        log(`[mol_tree2] parsed ${uri}:\n${tree.toString()}`)
     } else {
         trees.delete(uri)
-        if (diagnostics[0]) connection.console.log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
+        if (diagnostics[0]) log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
     }
 
     // Update project index using AST + text
@@ -81,7 +84,7 @@ documents.onDidChangeContent(async change => {
     connection.sendDiagnostics({ uri, diagnostics })
     {
         const stats = getIndexStats(uri)
-        connection.console.log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length} index=classes:${stats.classes} props:${stats.props} occs:${stats.occs}`)
+        log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length} index=classes:${stats.classes} props:${stats.props} occs:${stats.occs}`)
     }
 
     // Recursively load dependencies (class references) from workspace
@@ -94,12 +97,12 @@ documents.onDidChangeContent(async change => {
                 trees as any,
                 updateIndexForDoc,
                 50,
-                (msg) => connection.console.log(msg),
+                (msg) => log(msg),
             )
-            connection.console.log(`[view.tree] deps loaded: seed=${refs.size}`)
+            log(`[view.tree] deps loaded: seed=${refs.size}`)
         }
     } catch (e: any) {
-        connection.console.log(`[view.tree] deps error: ${e?.message || e}`)
+        log(`[view.tree] deps error: ${e?.message || e}`)
     }
 })
 
@@ -107,7 +110,7 @@ documents.onDidClose(ev => {
     const uri = ev.document.uri
     trees.delete(uri)
     removeFromIndex(uri)
-    connection.console.log(`[view.tree] closed: ${uri}`)
+    log(`[view.tree] closed: ${uri}`)
 })
 
 connection.onCompletion(params => {
@@ -116,7 +119,7 @@ connection.onCompletion(params => {
     const root = trees.get(uri)
     if (!doc || !root) return []
     const items = getCompletions(doc, params.position, root)
-    connection.console.log(`[view.tree] completion: uri=${uri} pos=${params.position.line}:${params.position.character} items=${items.length}`)
+    log(`[view.tree] completion: uri=${uri} pos=${params.position.line}:${params.position.character} items=${items.length}`)
     return items
 })
 
@@ -146,7 +149,7 @@ connection.onHover(params => {
 
     const range = node.span ? spanToRange(node.span) : undefined
     const hover: Hover = { contents: { kind: 'markdown', value: contents }, range }
-    connection.console.log(`[view.tree] hover: uri=${uri} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
+    log(`[view.tree] hover: uri=${uri} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
     return hover
 })
 
@@ -173,7 +176,7 @@ connection.onDefinition(params => {
             },
         })
     }
-    connection.console.log(`[view.tree] definition: token=${token} hits=${locs.length}`)
+    log(`[view.tree] definition: token=${token} hits=${locs.length}`)
     return (locs.length ? (locs.length === 1 ? locs[0] : locs) : null) as Definition
 })
 
@@ -195,7 +198,7 @@ connection.onReferences(params => {
             end: { line: h.spot.line, character: h.spot.col + h.spot.length },
         },
     }))
-    connection.console.log(`[view.tree] references: token=${token} hits=${refs.length}`)
+    log(`[view.tree] references: token=${token} hits=${refs.length}`)
     return refs
 })
 
@@ -206,7 +209,7 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams): SemanticT
     const root = trees.get(uri)
     const data = buildSemanticTokens(doc as TextDocument, root)
     const count = Math.floor(data.length / 5)
-    connection.console.log(`[view.tree] semanticTokens: uri=${uri} tokens=${count}`)
+    log(`[view.tree] semanticTokens: uri=${uri} tokens=${count}`)
     return { data }
 })
 
@@ -233,7 +236,7 @@ connection.onPrepareRename(params => {
     const offset = doc.offsetAt(params.position)
     const wr = wordRangeAt(doc, offset)
     if (!wr) return null
-    connection.console.log(`[view.tree] prepareRename: uri=${uri} token=${wr.text}`)
+    log(`[view.tree] prepareRename: uri=${uri} token=${wr.text}`)
     return { range: wr.range, placeholder: wr.text }
 })
 
@@ -263,7 +266,7 @@ connection.onRenameRequest(params => {
     }
     const edit: WorkspaceEdit = { changes }
     const total = Object.values(changes).reduce((n, arr) => n + arr.length, 0)
-    connection.console.log(`[view.tree] rename: ${oldName} -> ${newName} edits=${total}`)
+    log(`[view.tree] rename: ${oldName} -> ${newName} edits=${total}`)
     return edit
 })
 

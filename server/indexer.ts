@@ -1,3 +1,5 @@
+import { classLike } from './resolver'
+
 type Spot = { line: number; col: number; length: number }
 type Ast = any
 const classDefsByUri = new Map<string, Map<string, Spot>>()
@@ -27,7 +29,7 @@ export function updateIndexForDoc(uri: string, root: Ast | null | undefined, tex
       const name = String(node.type)
       const spot: Spot = { line: row, col, length: name.length }
       addOcc(name, spot)
-      if (/^\$?[A-Z][\w]*$/.test(name) && col === 0) {
+      if (classLike(name) && col === 0) {
         classDefs.set(name, spot)
       } else if (/^[a-z][\w]*$/.test(name)) {
         const arr = propDefs.get(name) ?? []

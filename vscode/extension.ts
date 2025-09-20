@@ -13,11 +13,12 @@ export function activate(context: ExtensionContext) {
 		run: { module: serverModule, transport: TransportKind.ipc },
 		debug: { module: serverModule, transport: TransportKind.ipc, options: { execArgv: ['--inspect=6009'] } },
 	}
-	const clientOptions: LanguageClientOptions = {
-		documentSelector: [{ scheme: 'file', language: 'view.tree' }],
-		synchronize: { fileEvents: workspace.createFileSystemWatcher('**/*.view.tree') },
-		traceOutputChannel: traceOutput,
-	}
+    const clientOptions: LanguageClientOptions = {
+        documentSelector: [{ scheme: 'file', language: 'view.tree' }],
+        synchronize: { fileEvents: workspace.createFileSystemWatcher('**/*.view.tree') },
+        traceOutputChannel: traceOutput,
+        outputChannel: traceOutput,
+    }
 	client = new LanguageClient('viewtree-lsp', 'view.tree LSP', serverOptions, clientOptions)
 	context.subscriptions.push(client)
 	client.start()
