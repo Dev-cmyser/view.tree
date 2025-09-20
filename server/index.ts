@@ -137,30 +137,37 @@ connection.onHover(params => {
 
     const header = node?.type ? String(node.type) : token
     const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : ''
-    const preview = node && typeof node.clone === 'function' ? String(node.clone([])) : ''
     const defs = [...findClassDefs(token), ...findPropDefs(token)]
 
-    // If class-like symbol, try to show props from its class file
-    let info = ''
+    // If class-like symbol, show top-level props from its class AST as a newline list
+    let propsBlock = ''
     if (classLike(token)) {
         const target = defs[0]
         const targetUri = target?.uri
         const targetTree = targetUri ? trees.get(targetUri) : undefined
         if (targetTree) {
-            // Find class node and collect prop names
             const classNode: any = (targetTree.kids || []).find((k: any) => String(k.type) === token) || targetTree
-            const props = new Set<string>()
+            const lines: string[] = []
             for (const kid of (classNode.kids || [])) {
                 const t = String(kid.type || '')
-                if (/^[a-z][\w]*$/.test(t)) props.add(t)
+                if (/^[a-z][\w]*$/.test(t)) {
+                    let line = t
+                    const first = (kid.kids && kid.kids[0])
+                    if (first && first.type === '*') {
+                        const dv = first.kids && first.kids[0]
+                        const grp = dv && String(dv.type || '') === '' && dv.value ? String(dv.value) : ''
+                        line += ` *${grp}`
+                    }
+                    lines.push(line)
+                }
             }
-            if (props.size) info = `\nprops: ${[...props].join(', ')}`
+            if (lines.length) propsBlock = lines.join('\n')
         }
     }
 
     const contents = [
-        `view.tree: ${header}${value}${info}`,
-        preview && '```view.tree\n' + preview + '\n```',
+        `view.tree: ${header}${value}`,
+        propsBlock,
     ].filter(Boolean).join('\n')
 
     const range = node?.span ? spanToRange(node.span) : (wr?.range)

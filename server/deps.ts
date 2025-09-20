@@ -11,7 +11,8 @@ export function extractClassRefs(root: Ast): Set<string> {
   const walk = (n: any) => {
     if (!n) return
     const t = String(n.type ?? '')
-    if (t && classLike(t)) out.add(t)
+    // Only $-prefixed word-like tokens to avoid props like dom_name, natural_height, etc.
+    if (/^\$[A-Za-z][\w]*$/.test(t)) out.add(t)
     const kids: any[] = (n.kids || []) as any
     for (const k of kids) walk(k)
   }
@@ -52,8 +53,7 @@ export async function loadDependencies(
       log?.(`[deps] parsed ${rel} refs=${refs.size} depth=${depth}`)
       for (const ref of refs) if (!visited.has(ref)) queue.push({ name: ref, depth: depth + 1 })
     } catch {
-      // Ignore missing files or parse errors quietly for now
-      log?.(`[deps] missing or failed: ${rel}`)
+      // Ignore missing files or parse errors quietly
       continue
     }
   }
