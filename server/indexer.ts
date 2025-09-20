@@ -100,3 +100,9 @@ export function findRefs(name: string): Array<{ uri: string; spot: Spot }> {
   return out
 }
 
+export function getIndexStats(uri: string): { classes: number; props: number; occs: number } {
+  const classes = classDefsByUri.get(uri)?.size ?? 0
+  const props = propDefsByUri.get(uri)?.size ?? 0
+  const occs = occByUri.get(uri)?.size ?? 0
+  return { classes, props, occs }
+}

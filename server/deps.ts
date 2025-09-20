@@ -27,20 +27,23 @@ export async function loadDependencies(
   trees: Map<string, Ast>,
   updateIndexForDoc: (uri: string, tree: Ast | null | undefined, text?: string) => void,
   maxDepth = 50,
+  log?: (msg: string) => void,
 ): Promise<void> {
   const visited = new Set<string>()
   const queue: Array<{ name: string; depth: number }> = []
   for (const name of entryRefs) queue.push({ name, depth: 0 })
+  log?.(`[deps] start queue size=${queue.length}`)
 
   while (queue.length) {
     const { name, depth } = queue.shift()!
     if (visited.has(name)) continue
     visited.add(name)
-    if (depth > maxDepth) continue
+    if (depth > maxDepth) { log?.(`[deps] maxDepth reached for ${name}`); continue }
 
     const rel = classNameToRelPath(name)
     const abs = nodePath.join(workspaceRootFs, rel)
     try {
+      log?.(`[deps] try ${rel}`)
       const buf = await fs.readFile(abs)
       const text = buf.toString('utf8')
       const uri = fsPathToUri(abs)
@@ -48,11 +51,13 @@ export async function loadDependencies(
       trees.set(uri, tree)
       updateIndexForDoc(uri, tree, text)
       const refs = extractClassRefs(tree)
+      log?.(`[deps] parsed ${rel} refs=${refs.size} depth=${depth}`)
       for (const ref of refs) if (!visited.has(ref)) queue.push({ name: ref, depth: depth + 1 })
     } catch {
       // Ignore missing files or parse errors quietly for now
+      log?.(`[deps] missing or failed: ${rel}`)
       continue
     }
   }
+  log?.(`[deps] done visited=${visited.size}`)
 }
-

@@ -24,7 +24,7 @@ import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc'
 import { getCompletions } from './completion'
-import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs } from './indexer'
+import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs, getIndexStats } from './indexer'
 import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
 import { uriToFsPath } from './resolver'
@@ -78,15 +78,25 @@ documents.onDidChangeContent(async change => {
     // Update project index using AST + text
     updateIndexForDoc(uri, tree, text)
 
-    connection.console.log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length}`)
     connection.sendDiagnostics({ uri, diagnostics })
+    {
+        const stats = getIndexStats(uri)
+        connection.console.log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length} index=classes:${stats.classes} props:${stats.props} occs:${stats.occs}`)
+    }
 
     // Recursively load dependencies (class references) from workspace
     try {
         if (workspaceRootFs && tree) {
             const refs = extractClassRefs(tree as any)
-            await loadDependencies(workspaceRootFs, refs, trees as any, updateIndexForDoc)
-            connection.console.log(`[view.tree] deps loaded: count=${refs.size}`)
+            await loadDependencies(
+                workspaceRootFs,
+                refs,
+                trees as any,
+                updateIndexForDoc,
+                50,
+                (msg) => connection.console.log(msg),
+            )
+            connection.console.log(`[view.tree] deps loaded: seed=${refs.size}`)
         }
     } catch (e: any) {
         connection.console.log(`[view.tree] deps error: ${e?.message || e}`)
