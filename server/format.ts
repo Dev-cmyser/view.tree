@@ -26,3 +26,12 @@ export function sanitizeSeparators(text: string): string {
   }
   return lines.join('\n')
 }
+
+export function sanitizeLineSpaces(line: string): string {
+  const m = /^([\t ]*)(.*)$/.exec(line)
+  if (!m) return line
+  const indent = m[1]
+  const rest = m[2]
+  if (rest.startsWith('\\')) return line
+  return indent + rest.replace(/ {2,}/g, ' ')
+}

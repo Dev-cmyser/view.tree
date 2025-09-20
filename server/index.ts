@@ -33,6 +33,7 @@ import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
 import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resolver'
 import { formatText, sanitizeSeparators } from './format'
+import { sanitizeLineSpaces } from './format'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -53,6 +54,7 @@ connection.onInitialize((params: InitializeParams) => {
 		definitionProvider: true,
 		referencesProvider: true,
 		renameProvider: { prepareProvider: true },
+        documentOnTypeFormattingProvider: { firstTriggerCharacter: ' ', moreTriggerCharacter: ['\n'] },
         documentFormattingProvider: true,
         codeActionProvider: true,
 		semanticTokensProvider: {
@@ -335,6 +337,22 @@ connection.onCodeAction(params => {
         isPreferred: true,
     }
     return [action]
+})
+
+// On-type formatting: collapse multiple spaces on the current line
+connection.onDocumentOnTypeFormatting(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return []
+    const pos = params.position
+    const line = doc.getText({ start: { line: pos.line, character: 0 }, end: { line: pos.line + 1, character: 0 } })
+    const sanitized = sanitizeLineSpaces(line.replace(/\n$/, ''))
+    if (sanitized === line.replace(/\n$/, '')) return []
+    const edit: TextEdit = {
+        range: { start: { line: pos.line, character: 0 }, end: { line: pos.line, character: line.replace(/\n$/, '').length } },
+        newText: sanitized,
+    }
+    return [edit]
 })
 
 // Semantic Tokens (full document)
