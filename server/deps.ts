@@ -49,10 +49,15 @@ export async function loadDependencies(
       const uri = fsPathToUri(abs)
       let tree: any
       try { tree = $.$mol_tree2.fromString(text, uri) }
-      catch (e) {
-        // Tolerant parse: collapse multi spaces between tokens
-        text = sanitizeSeparators(text)
-        tree = $.$mol_tree2.fromString(text, uri)
+      catch (e:any) {
+        const msg = String(e?.reason || e?.message || '')
+        if (/Wrong nodes separator/.test(msg)) {
+          text = sanitizeSeparators(text)
+          tree = $.$mol_tree2.fromString(text, uri)
+        } else if (/Unexpected EOF, LF required/.test(msg)) {
+          text = text.endsWith('\n') ? text : text + '\n'
+          tree = $.$mol_tree2.fromString(text, uri)
+        } else throw e
       }
       trees.set(uri, tree)
       updateIndexForDoc(uri, tree, text)

@@ -79,11 +79,21 @@ documents.onDidChangeContent(async change => {
 
     const { tree, diagnostics } = parseWithDiagnostics(text, uri)
     let parsed = tree as any
+    let finalDiagnostics = diagnostics
     if (!parsed) {
         try {
             const fixed = sanitizeSeparators(text)
             parsed = $.$mol_tree2.fromString(fixed, uri)
             log(`[mol_tree2] parsed (tolerant) ${uri}`)
+            // Auto-fix in editor to enforce single spaces
+            if (fixed !== text) {
+                const edit: TextEdit = {
+                    range: { start: { line: 0, character: 0 }, end: change.document.positionAt(text.length) },
+                    newText: fixed,
+                }
+                await connection.workspace.applyEdit({ changes: { [uri]: [edit] } })
+            }
+            finalDiagnostics = []
         } catch (e:any) {
             // keep parsed null
         }
@@ -99,7 +109,7 @@ documents.onDidChangeContent(async change => {
     // Update project index using AST + text
     updateIndexForDoc(uri, parsed, text)
 
-    connection.sendDiagnostics({ uri, diagnostics })
+    connection.sendDiagnostics({ uri, diagnostics: finalDiagnostics })
     {
         const stats = getIndexStats(uri)
         log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length} index=classes:${stats.classes} props:${stats.props} occs:${stats.occs}`)
@@ -440,6 +450,9 @@ connection.onDidChangeWatchedFiles(async (ev) => {
                 const msg = String(e?.reason || e?.message || '')
                 if (/Wrong nodes separator/.test(msg)) {
                     const fixed = sanitizeSeparators(text)
+                    tree = $.$mol_tree2.fromString(fixed, uri)
+                } else if (/Unexpected EOF, LF required/.test(msg)) {
+                    const fixed = text.endsWith('\n') ? text : text + '\n'
                     tree = $.$mol_tree2.fromString(fixed, uri)
                 } else throw e
             }
