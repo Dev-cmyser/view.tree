@@ -128,17 +128,17 @@ connection.onHover(params => {
     const doc = documents.get(uri)
     if (!doc) return null
     const root = trees.get(uri)
-    if (!root) return null
 
     const offset = doc.offsetAt(params.position)
-    const node: any = findNodeAtOffset(root as any, doc, offset)
-    if (!node) return null
+    const node: any = root ? findNodeAtOffset(root as any, doc, offset) : null
+    const wr = wordRangeAt(doc, offset)
+    const token = (node && (node.type || node.value)) ? String(node.type || node.value) : (wr?.text || '')
+    if (!token) return null
 
-    const header = node.type ? String(node.type) : '(data)'
-    const value = node.value ? ` = ${JSON.stringify(String(node.value))}` : ''
-    const preview = typeof node.clone === 'function' ? String(node.clone([])) : ''
-    const sym = node.type || node.value || ''
-    const defs = sym ? [...findClassDefs(String(sym)), ...findPropDefs(String(sym))] : []
+    const header = node?.type ? String(node.type) : token
+    const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : ''
+    const preview = node && typeof node.clone === 'function' ? String(node.clone([])) : ''
+    const defs = [...findClassDefs(token), ...findPropDefs(token)]
     const target = defs[0]
     const location = target ? `\nfile: ${target.uri}` : ''
 
@@ -147,9 +147,9 @@ connection.onHover(params => {
         preview && '```view.tree\n' + preview + '\n```',
     ].filter(Boolean).join('\n')
 
-    const range = node.span ? spanToRange(node.span) : undefined
+    const range = node?.span ? spanToRange(node.span) : (wr?.range)
     const hover: Hover = { contents: { kind: 'markdown', value: contents }, range }
-    log(`[view.tree] hover: uri=${uri} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
+    log(`[view.tree] hover: uri=${uri} token=${token} hits=${defs.length} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
     return hover
 })
 
@@ -157,11 +157,12 @@ connection.onDefinition(params => {
     const uri = params.textDocument.uri
     const doc = documents.get(uri)
     const root = trees.get(uri)
-    if (!doc || !root) return null
+    if (!doc) return null
     const offset = doc.offsetAt(params.position)
-    const node: any = findNodeAtOffset(root as any, doc, offset)
-    const token = node ? (node.type || node.value || '') : ''
-    if (!token) return null
+    const node: any = root ? findNodeAtOffset(root as any, doc, offset) : null
+    const wr = wordRangeAt(doc, offset)
+    const token = node ? (String(node.type || node.value || '')) : (wr?.text || '')
+    if (!token) { log(`[view.tree] definition: no-token`); return null }
 
     const classHits = findClassDefs(token)
     const propHits = findPropDefs(token)
@@ -184,11 +185,12 @@ connection.onReferences(params => {
     const uri = params.textDocument.uri
     const doc = documents.get(uri)
     const root = trees.get(uri)
-    if (!doc || !root) return null
+    if (!doc) return null
     const offset = doc.offsetAt(params.position)
-    const node: any = findNodeAtOffset(root as any, doc, offset)
-    const token = node ? (node.type || node.value || '') : ''
-    if (!token) return []
+    const node: any = root ? findNodeAtOffset(root as any, doc, offset) : null
+    const wr = wordRangeAt(doc, offset)
+    const token = node ? (String(node.type || node.value || '')) : (wr?.text || '')
+    if (!token) { log(`[view.tree] references: no-token`); return [] }
 
     const hits = findRefs(token)
     const refs = hits.map(h => ({
