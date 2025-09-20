@@ -1,50 +1,64 @@
 type Spot = { line: number; col: number; length: number }
+type Ast = any
 const classDefsByUri = new Map<string, Map<string, Spot>>()
 const propDefsByUri = new Map<string, Map<string, Spot[]>>()
+const occByUri = new Map<string, Map<string, Spot[]>>()
 const textByUri = new Map<string, string>()
 
-export function updateIndexForDoc(uri: string, text: string) {
-  textByUri.set(uri, text)
+export function updateIndexForDoc(uri: string, root: Ast | null | undefined, text?: string) {
+  if (typeof text === 'string') textByUri.set(uri, text)
   const classDefs = new Map<string, Spot>()
   const propDefs = new Map<string, Spot[]>()
+  const occs = new Map<string, Spot[]>()
 
-  const lines = text.split(/\r?\n/)
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i]
-    const line = raw.replace(/\t/g, '    ')
-    const trimmed = line.trim()
-    if (!trimmed) continue
-
-    // Class declarations at line start (allow leading whitespace): $Name | Name
-    const classRe = /^\s*(\$?[A-Z][\w]*)\b/
-    const classMatch = classRe.exec(raw)
-    if (classMatch) {
-      const name = classMatch[1]
-      const start = classMatch.index + (raw.slice(classMatch.index).match(/^\s*/)?.[0].length ?? 0)
-      classDefs.set(name, { line: i, col: start, length: name.length })
-      continue
-    }
-
-    // Property names at line start (allow leading whitespace): key, key <=, key =
-    const propRe = /^\s*([a-z][\w]*)\b/
-    const propMatch = propRe.exec(raw)
-    if (propMatch) {
-      const key = propMatch[1]
-      const start = propMatch.index + (raw.slice(propMatch.index).match(/^\s*/)?.[0].length ?? 0)
-      const spot: Spot = { line: i, col: start, length: key.length }
-      const arr = propDefs.get(key) ?? []
-      arr.push(spot)
-      propDefs.set(key, arr)
-    }
+  function addOcc(name: string, spot: Spot) {
+    const arr = occs.get(name) ?? []
+    arr.push(spot)
+    occs.set(name, arr)
   }
+
+  function walk(node: Ast) {
+    if (!node || !node.span) return
+    const span = node.span
+    const row = Math.max(0, Number(span.row || 1) - 1)
+    const col = Math.max(0, Number(span.col || 1) - 1)
+
+    if (node.type) {
+      const name = String(node.type)
+      const spot: Spot = { line: row, col, length: name.length }
+      addOcc(name, spot)
+      if (/^\$?[A-Z][\w]*$/.test(name) && col === 0) {
+        // Top-level, treat as class definition
+        classDefs.set(name, spot)
+      } else if (/^[a-z][\w]*$/.test(name)) {
+        const arr = propDefs.get(name) ?? []
+        arr.push(spot)
+        propDefs.set(name, arr)
+      }
+    } else if (node.value) {
+      const val = String(node.value)
+      // Optional: record occurrences of bare identifiers in values
+      if (/^[A-Za-z$][\w$]*$/.test(val)) {
+        const spot: Spot = { line: row, col, length: val.length }
+        addOcc(val, spot)
+      }
+    }
+
+    const kids: Ast[] = (node.kids || []) as any
+    for (const k of kids) walk(k)
+  }
+
+  if (root) walk(root)
 
   classDefsByUri.set(uri, classDefs)
   propDefsByUri.set(uri, propDefs)
+  occByUri.set(uri, occs)
 }
 
 export function removeFromIndex(uri: string) {
   classDefsByUri.delete(uri)
   propDefsByUri.delete(uri)
+  occByUri.delete(uri)
   textByUri.delete(uri)
 }
 
@@ -84,18 +98,10 @@ function escapeRe(str: string) {
 
 export function findRefs(name: string): Array<{ uri: string; spot: Spot }> {
   const out: Array<{ uri: string; spot: Spot }> = []
-  const needle = escapeRe(name)
-  const re = new RegExp(`(?<![A-Za-z0-9_])${needle}(?![A-Za-z0-9_])`, 'g')
-  for (const [uri, text] of textByUri.entries()) {
-    const lines = text.split(/\r?\n/)
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      let m: RegExpExecArray | null
-      re.lastIndex = 0
-      while ((m = re.exec(line))) {
-        out.push({ uri, spot: { line: i, col: m.index, length: name.length } })
-      }
-    }
+  for (const [uri, occs] of occByUri.entries()) {
+    const arr = occs.get(name)
+    if (!arr) continue
+    for (const spot of arr) out.push({ uri, spot })
   }
   return out
 }

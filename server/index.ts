@@ -65,8 +65,8 @@ documents.onDidChangeContent(async change => {
 		if (diagnostics[0]) connection.console.log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
 	}
 
-	// Update project index
-	updateIndexForDoc(uri, text)
+	// Update project index using AST + text
+	updateIndexForDoc(uri, tree, text)
 
 	connection.sendDiagnostics({ uri, diagnostics })
 })
@@ -113,11 +113,11 @@ connection.onHover(params => {
 connection.onDefinition(params => {
     const uri = params.textDocument.uri
     const doc = documents.get(uri)
-    if (!doc) return null
-    const text = doc.getText()
+    const root = trees.get(uri)
+    if (!doc || !root) return null
     const offset = doc.offsetAt(params.position)
-    const tokenMatch = /([A-Za-z$][\w]*)/.exec(text.slice(offset - 64 < 0 ? 0 : offset - 64, offset + 64))
-    const token = tokenMatch ? tokenMatch[1] : ''
+    const node: any = findNodeAtOffset(root as any, doc, offset)
+    const token = node ? (node.type || node.value || '') : ''
     if (!token) return null
 
     const classHits = findClassDefs(token)
@@ -139,11 +139,11 @@ connection.onDefinition(params => {
 connection.onReferences(params => {
     const uri = params.textDocument.uri
     const doc = documents.get(uri)
-    if (!doc) return null
-    const text = doc.getText()
+    const root = trees.get(uri)
+    if (!doc || !root) return null
     const offset = doc.offsetAt(params.position)
-    const tokenMatch = /([A-Za-z$][\w]*)/.exec(text.slice(offset - 64 < 0 ? 0 : offset - 64, offset + 64))
-    const token = tokenMatch ? tokenMatch[1] : ''
+    const node: any = findNodeAtOffset(root as any, doc, offset)
+    const token = node ? (node.type || node.value || '') : ''
     if (!token) return []
 
     const hits = findRefs(token)
