@@ -1,5 +1,5 @@
 import { TextDocument } from 'vscode-languageserver-textdocument'
-import { spanContainsOffset } from '../loc/offset'
+import { spanContainsOffset } from '../loc'
 
 export type Ast = any // $.$mol_tree2
 
@@ -14,4 +14,3 @@ export function findNodeAtOffset(root: Ast, doc: TextDocument, offset: number): 
   }
   return found
 }
-

@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, Position } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
-import { findNodeAtOffset } from '../ast/findNode'
-import { getAllClasses, getAllProps } from '../indexer'
+import { findNodeAtOffset } from './ast/findNode'
+import { getAllClasses, getAllProps } from './indexer'
 
 export function getCompletions(doc: TextDocument, position: Position, root: any): CompletionItem[] {
   const text = doc.getText()
@@ -52,3 +52,4 @@ export function getCompletions(doc: TextDocument, position: Position, root: any)
     ...operators,
   ]
 }
+

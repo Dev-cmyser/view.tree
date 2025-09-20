@@ -28,7 +28,6 @@ export function updateIndexForDoc(uri: string, root: Ast | null | undefined, tex
       const spot: Spot = { line: row, col, length: name.length }
       addOcc(name, spot)
       if (/^\$?[A-Z][\w]*$/.test(name) && col === 0) {
-        // Top-level, treat as class definition
         classDefs.set(name, spot)
       } else if (/^[a-z][\w]*$/.test(name)) {
         const arr = propDefs.get(name) ?? []
@@ -37,7 +36,6 @@ export function updateIndexForDoc(uri: string, root: Ast | null | undefined, tex
       }
     } else if (node.value) {
       const val = String(node.value)
-      // Optional: record occurrences of bare identifiers in values
       if (/^[A-Za-z$][\w$]*$/.test(val)) {
         const spot: Spot = { line: row, col, length: val.length }
         addOcc(val, spot)
@@ -92,10 +90,6 @@ export function findPropDefs(name: string): Array<{ uri: string; spot: Spot }> {
   return out
 }
 
-function escapeRe(str: string) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 export function findRefs(name: string): Array<{ uri: string; spot: Spot }> {
   const out: Array<{ uri: string; spot: Spot }> = []
   for (const [uri, occs] of occByUri.entries()) {
@@ -105,3 +99,4 @@ export function findRefs(name: string): Array<{ uri: string; spot: Spot }> {
   }
   return out
 }
+

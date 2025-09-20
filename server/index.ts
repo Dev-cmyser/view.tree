@@ -18,10 +18,10 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
 import $ from 'mol_tree2'
-import { parseWithDiagnostics } from './diag/collect'
+import { parseWithDiagnostics } from './diag'
 import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
-import { spanToRange } from './loc/offset'
+import { spanToRange } from './loc'
 import { getCompletions } from './completion'
 import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs } from './indexer'
 import { buildSemanticTokens } from './semanticTokens'

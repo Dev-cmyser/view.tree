@@ -73,3 +73,4 @@ export function buildSemanticTokens(doc: TextDocument, root: Ast | null | undefi
   }
   return data
 }
+
