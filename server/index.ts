@@ -54,7 +54,6 @@ connection.onInitialize((params: InitializeParams) => {
 		definitionProvider: true,
 		referencesProvider: true,
 		renameProvider: { prepareProvider: true },
-        documentOnTypeFormattingProvider: { firstTriggerCharacter: ' ', moreTriggerCharacter: ['\n'] },
         documentFormattingProvider: true,
         codeActionProvider: true,
 		semanticTokensProvider: {
@@ -85,14 +84,7 @@ documents.onDidChangeContent(async change => {
             const fixed = sanitizeSeparators(text)
             parsed = $.$mol_tree2.fromString(fixed, uri)
             log(`[mol_tree2] parsed (tolerant) ${uri}`)
-            // Auto-fix in editor to enforce single spaces
-            if (fixed !== text) {
-                const edit: TextEdit = {
-                    range: { start: { line: 0, character: 0 }, end: change.document.positionAt(text.length) },
-                    newText: fixed,
-                }
-                await connection.workspace.applyEdit({ changes: { [uri]: [edit] } })
-            }
+            // Do not auto-apply edits; only format on explicit request
             finalDiagnostics = []
         } catch (e:any) {
             // keep parsed null
@@ -349,24 +341,7 @@ connection.onCodeAction(params => {
     return [action]
 })
 
-// On-type formatting: collapse multiple spaces on the current line
-connection.onDocumentOnTypeFormatting(params => {
-    const uri = params.textDocument.uri
-    const doc = documents.get(uri)
-    if (!doc) return []
-    const pos = params.position
-    const ch = (params as any).ch
-    const line = doc.getText({ start: { line: pos.line, character: 0 }, end: { line: pos.line + 1, character: 0 } })
-    const before = line.replace(/\n$/, '')
-    const sanitized = sanitizeLineSpaces(before)
-    log(`[onType] ch=${JSON.stringify(ch)} at ${pos.line}:${pos.character} before='${before}' after='${sanitized}' changed=${sanitized !== before}`)
-    if (sanitized === before) return []
-    const edit: TextEdit = {
-        range: { start: { line: pos.line, character: 0 }, end: { line: pos.line, character: before.length } },
-        newText: sanitized,
-    }
-    return [edit]
-})
+// (Removed) On-type formatting: enforcement happens only on explicit format
 
 // Semantic Tokens (full document)
 connection.languages.semanticTokens.on((params: SemanticTokensParams): SemanticTokens => {
