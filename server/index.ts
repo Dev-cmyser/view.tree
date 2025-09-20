@@ -1,23 +1,21 @@
 import {
-    createConnection,
-    ProposedFeatures,
-    TextDocuments,
-    InitializeParams,
-    TextDocumentSyncKind,
-    CompletionItem,
-    SemanticTokens,
-    SemanticTokensParams,
+	createConnection,
+	ProposedFeatures,
+	TextDocuments,
+	InitializeParams,
+	TextDocumentSyncKind,
+	CompletionItem,
+	SemanticTokens,
+	SemanticTokensParams,
+	Diagnostic,
+	DiagnosticSeverity,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
-import Parser from 'tree-sitter'
-import ViewTreeLang from 'tree-sitter-viewtree'
+import $ from 'mol_tree2'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
-
-const parser = new Parser()
-parser.setLanguage((ViewTreeLang as any).language)
 
 connection.onInitialize((_params: InitializeParams) => ({
 	capabilities: {
@@ -53,16 +51,45 @@ connection.languages.semanticTokens.on((_params: SemanticTokensParams): Semantic
 
 documents.onDidChangeContent(async change => {
 	const text = change.document.getText()
-	const tree = parser.parse(text)
+	const uri = change.document.uri
 
-	// тут можно делать валидации по синтаксису и присылать diagnostics
-	connection.sendDiagnostics({ uri: change.document.uri, diagnostics: [] })
+	const diagnostics: Diagnostic[] = []
 
-	// (по желанию) connection.console.log(JSON.stringify(tree.rootNode.toString()))
+	try {
+		// Parse with mol_tree2. Throws $mol_error_syntax on invalid input.
+		const tree = $.$mol_tree2.fromString(text, uri)
+		void tree // placeholder: keep AST for future features
+	} catch (err: any) {
+		const span = err?.span as undefined | { row: number; col: number; length: number }
+		const reason = (err?.reason ?? err?.message ?? 'Syntax error').toString()
+		if (span && typeof span.row === 'number' && typeof span.col === 'number') {
+			const line = Math.max(0, span.row - 1)
+			const character = Math.max(0, span.col - 1)
+			const length = Math.max(1, Number(span.length ?? 1))
+			diagnostics.push({
+				severity: DiagnosticSeverity.Error,
+				range: {
+					start: { line, character },
+					end: { line, character: character + length },
+				},
+				message: reason,
+				source: 'mol_tree2',
+			})
+		} else {
+			diagnostics.push({
+				severity: DiagnosticSeverity.Error,
+				range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+				message: reason,
+				source: 'mol_tree2',
+			})
+		}
+	}
+
+	connection.sendDiagnostics({ uri, diagnostics })
 })
 
 connection.onCompletion((): CompletionItem[] => {
-	// быстрые болванки — потом заменишь на контекстные по AST
+	// быстрые болванки — потом заменим на контекстные по AST mol_tree2
 	return ['view', 'sub', 'attr', 'dom_name'].map(l => ({ label: l }))
 })
 

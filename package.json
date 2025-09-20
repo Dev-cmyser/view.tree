@@ -5,7 +5,9 @@
 	"version": "0.1.0",
 	"private": true,
 	"main": "./out/vscode/extension.js",
-	"engines": { "vscode": "^1.76.0" },
+	"engines": {
+		"vscode": "^1.76.0"
+	},
 	"activationEvents": [
 		"onLanguage:view.tree"
 	],
@@ -13,8 +15,12 @@
 		"languages": [
 			{
 				"id": "view.tree",
-				"aliases": ["view.tree"],
-				"extensions": [".view.tree"]
+				"aliases": [
+					"view.tree"
+				],
+				"extensions": [
+					".view.tree"
+				]
 			}
 		],
 		"grammars": [
@@ -31,15 +37,16 @@
 		"watch-server": " tsc -w -p ts-config.json"
 	},
 	"dependencies": {
-		"vscode-languageserver": "^9.0.1",
-		"vscode-languageserver-textdocument": "^1.0.12",
+		"mol_tree2": "^1.0.1196",
+		"tree-sitter": "^0.25.0",
 		"tree-sitter-viewtree": "file:./tree-sitter-viewtree",
-		"tree-sitter": "^0.25.0"
+		"vscode-languageserver": "^9.0.1",
+		"vscode-languageserver-textdocument": "^1.0.12"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",
-		"typescript": "^5.9.2",
 		"@types/vscode": "^1.76.0",
+		"typescript": "^5.9.2",
 		"vscode-languageclient": "^9.0.1"
 	}
 }
