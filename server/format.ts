@@ -3,12 +3,18 @@ import $ from 'mol_tree2'
 export function formatText(text: string, uri?: string): string {
   try {
     const tree = $.$mol_tree2.fromString(text, uri)
-    // Use mol_tree2 pretty-printer to normalize spaces, tabs, newlines
     return tree.toString()
-  } catch {
-    // Fallback: normalize newlines and ensure trailing newline
-    const unix = text.replace(/\r\n?/g, '\n')
-    return unix.endsWith('\n') ? unix : unix + '\n'
+  } catch (e1) {
+    // Try sanitize separators and trailing LF, then reparse
+    let fixed = sanitizeSeparators(text)
+    if (!/\n$/.test(fixed)) fixed += '\n'
+    try {
+      const tree2 = $.$mol_tree2.fromString(fixed, uri)
+      return tree2.toString()
+    } catch (e2) {
+      // Last resort: return sanitized text
+      return fixed
+    }
   }
 }
 
