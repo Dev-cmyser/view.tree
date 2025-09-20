@@ -215,7 +215,7 @@ connection.onHover(async params => {
                 }
             }
             log(`[hover] propsCount=${lines.length}`)
-            if (lines.length) propsBlock = lines.join('\n')
+            if (lines.length) propsBlock = lines.map(l => `- ${l}`).join('\n')
         }
     }
 
