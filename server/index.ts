@@ -76,16 +76,26 @@ documents.onDidChangeContent(async change => {
     const uri = change.document.uri
 
     const { tree, diagnostics } = parseWithDiagnostics(text, uri)
-    if (tree) {
-        trees.set(uri, tree)
-        log(`[mol_tree2] parsed ${uri}:\n${tree.toString()}`)
+    let parsed = tree as any
+    if (!parsed) {
+        try {
+            const fixed = sanitizeSeparators(text)
+            parsed = $.$mol_tree2.fromString(fixed, uri)
+            log(`[mol_tree2] parsed (tolerant) ${uri}`)
+        } catch (e:any) {
+            // keep parsed null
+        }
+    }
+    if (parsed) {
+        trees.set(uri, parsed)
+        // log(`[mol_tree2] parsed ${uri}`)
     } else {
         trees.delete(uri)
         if (diagnostics[0]) log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
     }
 
     // Update project index using AST + text
-    updateIndexForDoc(uri, tree, text)
+    updateIndexForDoc(uri, parsed, text)
 
     connection.sendDiagnostics({ uri, diagnostics })
     {
@@ -95,8 +105,8 @@ documents.onDidChangeContent(async change => {
 
     // Recursively load dependencies (class references) from workspace
     try {
-        if (workspaceRootFs && tree) {
-            const refs = extractClassRefs(tree as any)
+        if (workspaceRootFs && parsed) {
+            const refs = extractClassRefs(parsed as any)
             await loadDependencies(
                 workspaceRootFs,
                 refs,
