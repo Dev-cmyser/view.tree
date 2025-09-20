@@ -16,6 +16,7 @@ import {
 	Range,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
+import * as fs from 'fs/promises'
 
 import $ from 'mol_tree2'
 import { parseWithDiagnostics } from './diag'
@@ -25,14 +26,19 @@ import { spanToRange } from './loc'
 import { getCompletions } from './completion'
 import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs } from './indexer'
 import { buildSemanticTokens } from './semanticTokens'
+import { extractClassRefs, loadDependencies } from './deps'
+import { uriToFsPath } from './resolver'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 const trees = new Map<string, Ast>()
 
+let workspaceRootFs = ''
 connection.onInitialize((params: InitializeParams) => {
     const ws = params.workspaceFolders?.map(f => f.uri).join(', ') || params.rootUri || 'unknown'
     connection.console.log(`[view.tree] onInitialize: workspace=${ws}`)
+    const rootUri = params.workspaceFolders?.[0]?.uri || params.rootUri || ''
+    workspaceRootFs = rootUri ? uriToFsPath(rootUri) : ''
     return {
     capabilities: {
 		textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -74,6 +80,17 @@ documents.onDidChangeContent(async change => {
 
     connection.console.log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length}`)
     connection.sendDiagnostics({ uri, diagnostics })
+
+    // Recursively load dependencies (class references) from workspace
+    try {
+        if (workspaceRootFs && tree) {
+            const refs = extractClassRefs(tree as any)
+            await loadDependencies(workspaceRootFs, refs, trees as any, updateIndexForDoc)
+            connection.console.log(`[view.tree] deps loaded: count=${refs.size}`)
+        }
+    } catch (e: any) {
+        connection.console.log(`[view.tree] deps error: ${e?.message || e}`)
+    }
 })
 
 documents.onDidClose(ev => {
@@ -107,9 +124,13 @@ connection.onHover(params => {
     const header = node.type ? String(node.type) : '(data)'
     const value = node.value ? ` = ${JSON.stringify(String(node.value))}` : ''
     const preview = typeof node.clone === 'function' ? String(node.clone([])) : ''
+    const sym = node.type || node.value || ''
+    const defs = sym ? [...findClassDefs(String(sym)), ...findPropDefs(String(sym))] : []
+    const target = defs[0]
+    const location = target ? `\nfile: ${target.uri}` : ''
 
     const contents = [
-        `view.tree: ${header}${value}`,
+        `view.tree: ${header}${value}${location}`,
         preview && '```view.tree\n' + preview + '\n```',
     ].filter(Boolean).join('\n')
 
@@ -234,6 +255,23 @@ connection.onRenameRequest(params => {
     const total = Object.values(changes).reduce((n, arr) => n + arr.length, 0)
     connection.console.log(`[view.tree] rename: ${oldName} -> ${newName} edits=${total}`)
     return edit
+})
+
+// Watcher: update cache/index when files change on disk (from client watcher)
+connection.onDidChangeWatchedFiles(async (ev) => {
+    for (const ch of ev.changes) {
+        try {
+            const fsPath = uriToFsPath(ch.uri)
+            const text = await fs.readFile(fsPath, 'utf8')
+            const uri = ch.uri
+            const tree = $.$mol_tree2.fromString(text, uri)
+            trees.set(uri, tree)
+            updateIndexForDoc(uri, tree, text)
+            connection.console.log(`[view.tree] watched-change parsed: ${uri}`)
+        } catch (e: any) {
+            connection.console.log(`[view.tree] watched-change failed: ${ch.uri} ${e?.message || e}`)
+        }
+    }
 })
 
 documents.listen(connection)
