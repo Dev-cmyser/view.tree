@@ -15,6 +15,9 @@ import {
 	WorkspaceEdit,
 	Range,
 	MessageType,
+    TextEdit,
+    CodeAction,
+    CodeActionKind,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import * as fs from 'fs/promises'
@@ -29,6 +32,7 @@ import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRe
 import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
 import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resolver'
+import { formatText, sanitizeSeparators } from './format'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -49,6 +53,8 @@ connection.onInitialize((params: InitializeParams) => {
 		definitionProvider: true,
 		referencesProvider: true,
 		renameProvider: { prepareProvider: true },
+        documentFormattingProvider: true,
+        codeActionProvider: true,
 		semanticTokensProvider: {
 			legend: {
 				tokenTypes: [
@@ -285,6 +291,42 @@ connection.onReferences(params => {
     return refs
 })
 
+// Document formatting (full)
+connection.onDocumentFormatting(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return []
+    const original = doc.getText()
+    const formatted = formatText(original, uri)
+    if (formatted === original) return []
+    const edit: TextEdit = {
+        range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
+        newText: formatted,
+    }
+    return [edit]
+})
+
+// Quick Fix / Source Action: Format document
+connection.onCodeAction(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return []
+    const original = doc.getText()
+    const formatted = formatText(original, uri)
+    if (formatted === original) return []
+    const edit: TextEdit = {
+        range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
+        newText: formatted,
+    }
+    const action: CodeAction = {
+        title: 'Format (view.tree)',
+        kind: CodeActionKind.QuickFix,
+        edit: { changes: { [uri]: [edit] } },
+        isPreferred: true,
+    }
+    return [action]
+})
+
 // Semantic Tokens (full document)
 connection.languages.semanticTokens.on((params: SemanticTokensParams): SemanticTokens => {
     const uri = params.textDocument.uri
@@ -358,9 +400,18 @@ connection.onDidChangeWatchedFiles(async (ev) => {
     for (const ch of ev.changes) {
         try {
             const fsPath = uriToFsPath(ch.uri)
-            const text = await fs.readFile(fsPath, 'utf8')
+            let text = await fs.readFile(fsPath, 'utf8')
             const uri = ch.uri
-            const tree = $.$mol_tree2.fromString(text, uri)
+            let tree: any
+            try { tree = $.$mol_tree2.fromString(text, uri) }
+            catch (e: any) {
+                // Tolerant parse for common whitespace issues
+                const msg = String(e?.reason || e?.message || '')
+                if (/Wrong nodes separator/.test(msg)) {
+                    const fixed = sanitizeSeparators(text)
+                    tree = $.$mol_tree2.fromString(fixed, uri)
+                } else throw e
+            }
             trees.set(uri, tree)
             updateIndexForDoc(uri, tree, text)
             connection.console.log(`[view.tree] watched-change parsed: ${uri}`)

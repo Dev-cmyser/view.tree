@@ -3,6 +3,7 @@ import * as nodePath from 'path'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import { classLike, classNameToRelPath, fsPathToUri } from './resolver'
 import $ from 'mol_tree2'
+import { sanitizeSeparators } from './format'
 
 type Ast = any
 
@@ -44,9 +45,15 @@ export async function loadDependencies(
     try {
       log?.(`[deps] try ${rel}`)
       const buf = await fs.readFile(abs)
-      const text = buf.toString('utf8')
+      let text = buf.toString('utf8')
       const uri = fsPathToUri(abs)
-      const tree = $.$mol_tree2.fromString(text, uri)
+      let tree: any
+      try { tree = $.$mol_tree2.fromString(text, uri) }
+      catch (e) {
+        // Tolerant parse: collapse multi spaces between tokens
+        text = sanitizeSeparators(text)
+        tree = $.$mol_tree2.fromString(text, uri)
+      }
       trees.set(uri, tree)
       updateIndexForDoc(uri, tree, text)
       const refs = extractClassRefs(tree)
