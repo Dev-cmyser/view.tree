@@ -30,8 +30,11 @@ const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 const trees = new Map<string, Ast>()
 
-connection.onInitialize((_params: InitializeParams) => ({
-	capabilities: {
+connection.onInitialize((params: InitializeParams) => {
+    const ws = params.workspaceFolders?.map(f => f.uri).join(', ') || params.rootUri || 'unknown'
+    connection.console.log(`[view.tree] onInitialize: workspace=${ws}`)
+    return {
+    capabilities: {
 		textDocumentSync: TextDocumentSyncKind.Incremental,
 		completionProvider: { triggerCharacters: ['.', ':'] },
 		definitionProvider: true,
@@ -49,32 +52,35 @@ connection.onInitialize((_params: InitializeParams) => ({
 			full: true,
 		},
 		hoverProvider: true,
-	},
-}))
+    },
+}}
+)
 
 documents.onDidChangeContent(async change => {
-	const text = change.document.getText()
-	const uri = change.document.uri
+    const text = change.document.getText()
+    const uri = change.document.uri
 
-	const { tree, diagnostics } = parseWithDiagnostics(text, uri)
-	if (tree) {
-		trees.set(uri, tree)
-		connection.console.log(`[mol_tree2] parsed ${uri}:\n${tree.toString()}`)
-	} else {
-		trees.delete(uri)
-		if (diagnostics[0]) connection.console.log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
-	}
+    const { tree, diagnostics } = parseWithDiagnostics(text, uri)
+    if (tree) {
+        trees.set(uri, tree)
+        connection.console.log(`[mol_tree2] parsed ${uri}:\n${tree.toString()}`)
+    } else {
+        trees.delete(uri)
+        if (diagnostics[0]) connection.console.log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
+    }
 
-	// Update project index using AST + text
-	updateIndexForDoc(uri, tree, text)
+    // Update project index using AST + text
+    updateIndexForDoc(uri, tree, text)
 
-	connection.sendDiagnostics({ uri, diagnostics })
+    connection.console.log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length}`)
+    connection.sendDiagnostics({ uri, diagnostics })
 })
 
 documents.onDidClose(ev => {
-	const uri = ev.document.uri
-	trees.delete(uri)
-	removeFromIndex(uri)
+    const uri = ev.document.uri
+    trees.delete(uri)
+    removeFromIndex(uri)
+    connection.console.log(`[view.tree] closed: ${uri}`)
 })
 
 connection.onCompletion(params => {
@@ -82,7 +88,9 @@ connection.onCompletion(params => {
     const doc = documents.get(uri)
     const root = trees.get(uri)
     if (!doc || !root) return []
-    return getCompletions(doc, params.position, root)
+    const items = getCompletions(doc, params.position, root)
+    connection.console.log(`[view.tree] completion: uri=${uri} pos=${params.position.line}:${params.position.character} items=${items.length}`)
+    return items
 })
 
 connection.onHover(params => {
@@ -107,6 +115,7 @@ connection.onHover(params => {
 
     const range = node.span ? spanToRange(node.span) : undefined
     const hover: Hover = { contents: { kind: 'markdown', value: contents }, range }
+    connection.console.log(`[view.tree] hover: uri=${uri} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
     return hover
 })
 
@@ -133,6 +142,7 @@ connection.onDefinition(params => {
             },
         })
     }
+    connection.console.log(`[view.tree] definition: token=${token} hits=${locs.length}`)
     return (locs.length ? (locs.length === 1 ? locs[0] : locs) : null) as Definition
 })
 
@@ -147,13 +157,15 @@ connection.onReferences(params => {
     if (!token) return []
 
     const hits = findRefs(token)
-    return hits.map(h => ({
+    const refs = hits.map(h => ({
         uri: h.uri,
         range: {
             start: { line: h.spot.line, character: h.spot.col },
             end: { line: h.spot.line, character: h.spot.col + h.spot.length },
         },
     }))
+    connection.console.log(`[view.tree] references: token=${token} hits=${refs.length}`)
+    return refs
 })
 
 // Semantic Tokens (full document)
@@ -162,6 +174,8 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams): SemanticT
     const doc = documents.get(uri)
     const root = trees.get(uri)
     const data = buildSemanticTokens(doc as TextDocument, root)
+    const count = Math.floor(data.length / 5)
+    connection.console.log(`[view.tree] semanticTokens: uri=${uri} tokens=${count}`)
     return { data }
 })
 
@@ -188,6 +202,7 @@ connection.onPrepareRename(params => {
     const offset = doc.offsetAt(params.position)
     const wr = wordRangeAt(doc, offset)
     if (!wr) return null
+    connection.console.log(`[view.tree] prepareRename: uri=${uri} token=${wr.text}`)
     return { range: wr.range, placeholder: wr.text }
 })
 
@@ -216,6 +231,8 @@ connection.onRenameRequest(params => {
         changes[h.uri] = arr
     }
     const edit: WorkspaceEdit = { changes }
+    const total = Object.values(changes).reduce((n, arr) => n + arr.length, 0)
+    connection.console.log(`[view.tree] rename: ${oldName} -> ${newName} edits=${total}`)
     return edit
 })
 
