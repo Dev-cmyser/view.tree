@@ -123,7 +123,7 @@ connection.onCompletion(params => {
     return items
 })
 
-connection.onHover(params => {
+connection.onHover(async params => {
     const uri = params.textDocument.uri
     const doc = documents.get(uri)
     if (!doc) return null
@@ -137,42 +137,93 @@ connection.onHover(params => {
 
     const header = node?.type ? String(node.type) : token
     const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : ''
-    const defs = [...findClassDefs(token), ...findPropDefs(token)]
+    let defs = [...findClassDefs(token), ...findPropDefs(token)]
+    log(`[hover] start token=${token} defs=${defs.length}`)
 
-    // If class-like symbol, show top-level props from its class AST as a newline list
+    // If class-like symbol, show top-level props from its class AST with nested keys inline
     let propsBlock = ''
     if (classLike(token)) {
+        let targetTree: any
         const target = defs[0]
         const targetUri = target?.uri
-        const targetTree = targetUri ? trees.get(targetUri) : undefined
+        if (targetUri) { targetTree = trees.get(targetUri); log(`[hover] targetUri=${targetUri} cached=${!!targetTree}`) }
+        if (!targetTree && workspaceRootFs) {
+            try {
+                const rel = classNameToRelPath(token)
+                const fsPath = require('path').join(workspaceRootFs, rel)
+                log(`[hover] lazy-load fsPath=${fsPath}`)
+                const text2 = await fs.readFile(fsPath, 'utf8')
+                const uri2 = fsPathToUri(fsPath)
+                const tree2 = $.$mol_tree2.fromString(text2, uri2)
+                trees.set(uri2, tree2)
+                updateIndexForDoc(uri2, tree2, text2)
+                defs = [...findClassDefs(token), ...findPropDefs(token)]
+                targetTree = tree2
+                log(`[hover] lazy-load ok uri=${uri2} defsNow=${defs.length}`)
+            } catch {}
+        }
         if (targetTree) {
-            const classNode: any = (targetTree.kids || []).find((k: any) => String(k.type) === token) || targetTree
+            // Find the class node in AST (DFS), then list its direct lowercase-key children
+            const stack: any[] = [ targetTree ]
+            let classNode: any | null = null
+            while (stack.length) {
+                const cur = stack.pop()
+                if (cur) {
+                    const curType = String(cur.type || '')
+                    const normCur = curType.replace(/^\$/,'')
+                    const normTok = token.replace(/^\$/,'')
+                    if (curType === token || normCur === normTok) { classNode = cur; break }
+                }
+                const kids = (cur && cur.kids) || []
+                for (let i = kids.length - 1; i >= 0; --i) stack.push(kids[i])
+            }
+            log(`[hover] classNodeFound=${!!classNode}`)
+            const nodeToUse: any = classNode || targetTree
             const lines: string[] = []
-            for (const kid of (classNode.kids || [])) {
+            const childTypes = (nodeToUse.kids || []).map((k: any) => String(k.type || ''))
+            log(`[hover] childTypes=${childTypes.join(',')}`)
+            for (const kid of (nodeToUse.kids || [])) {
                 const t = String(kid.type || '')
                 if (/^[a-z][\w]*$/.test(t)) {
-                    let line = t
+                    // Group suffix if present (e.g., *any)
+                    let suffix = ''
                     const first = (kid.kids && kid.kids[0])
                     if (first && first.type === '*') {
                         const dv = first.kids && first.kids[0]
                         const grp = dv && String(dv.type || '') === '' && dv.value ? String(dv.value) : ''
-                        line += ` *${grp}`
+                        suffix = grp ? ` *${grp}` : ' *'
                     }
-                    lines.push(line)
+                    // Collect nested prop keys (skip first '*' node)
+                    const sub: string[] = []
+                    const startIdx = (first && first.type === '*') ? 1 : 0
+                    const kids2: any[] = kid.kids || []
+                    for (let i = startIdx; i < kids2.length; ++i) {
+                        const tt = String(kids2[i].type || '')
+                        if (/^[a-z][\w?]*\??$/.test(tt)) sub.push(tt)
+                    }
+                    if (sub.length) lines.push(`${t}${suffix}: ${sub.join(', ')}`)
+                    else lines.push(`${t}${suffix}`)
                 }
             }
+            if (!lines.length) {
+                // Fallback: scan one level deeper
+                for (const child of (nodeToUse.kids || [])) {
+                    for (const g of (child.kids || [])) {
+                        const tt = String(g.type || '')
+                        if (/^[a-z][\w]*$/.test(tt)) lines.push(tt)
+                    }
+                }
+            }
+            log(`[hover] propsCount=${lines.length}`)
             if (lines.length) propsBlock = lines.join('\n')
         }
     }
 
-    const contents = [
-        `view.tree: ${header}${value}`,
-        propsBlock,
-    ].filter(Boolean).join('\n')
+    const contents = propsBlock || token
 
     const range = node?.span ? spanToRange(node.span) : (wr?.range)
     const hover: Hover = { contents: { kind: 'markdown', value: contents }, range }
-    log(`[view.tree] hover: uri=${uri} token=${token} hits=${defs.length} range=${range ? `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}` : 'n/a'}`)
+    log(`[view.tree] hover: uri=${uri} token=${token} defs=${defs.length} hasProps=${contents !== `view.tree: ${header}${value}`}`)
     return hover
 })
 
