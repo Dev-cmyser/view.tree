@@ -19,6 +19,7 @@ import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc/offset'
 import { getCompletions } from './completion'
+import { updateIndexForDoc, removeFromIndex } from './indexer'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -59,7 +60,16 @@ documents.onDidChangeContent(async change => {
 		if (diagnostics[0]) connection.console.log(`[mol_tree2] parse error: ${diagnostics[0].message}`)
 	}
 
+	// Update project index
+	updateIndexForDoc(uri, text)
+
 	connection.sendDiagnostics({ uri, diagnostics })
+})
+
+documents.onDidClose(ev => {
+	const uri = ev.document.uri
+	trees.delete(uri)
+	removeFromIndex(uri)
 })
 
 connection.onCompletion(params => {
