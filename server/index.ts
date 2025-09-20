@@ -345,11 +345,14 @@ connection.onDocumentOnTypeFormatting(params => {
     const doc = documents.get(uri)
     if (!doc) return []
     const pos = params.position
+    const ch = (params as any).ch
     const line = doc.getText({ start: { line: pos.line, character: 0 }, end: { line: pos.line + 1, character: 0 } })
-    const sanitized = sanitizeLineSpaces(line.replace(/\n$/, ''))
-    if (sanitized === line.replace(/\n$/, '')) return []
+    const before = line.replace(/\n$/, '')
+    const sanitized = sanitizeLineSpaces(before)
+    log(`[onType] ch=${JSON.stringify(ch)} at ${pos.line}:${pos.character} before='${before}' after='${sanitized}' changed=${sanitized !== before}`)
+    if (sanitized === before) return []
     const edit: TextEdit = {
-        range: { start: { line: pos.line, character: 0 }, end: { line: pos.line, character: line.replace(/\n$/, '').length } },
+        range: { start: { line: pos.line, character: 0 }, end: { line: pos.line, character: before.length } },
         newText: sanitized,
     }
     return [edit]
