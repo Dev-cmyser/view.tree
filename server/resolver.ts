@@ -1,4 +1,5 @@
 import * as nodePath from 'path'
+import { pathToFileURL } from 'url'
 
 export function uriToFsPath(uri: string): string {
   if (!uri.startsWith('file://')) return uri
@@ -8,8 +9,7 @@ export function uriToFsPath(uri: string): string {
 }
 
 export function fsPathToUri(fsPath: string): string {
-  const norm = nodePath.resolve(fsPath)
-  return 'file://' + encodeURIComponent(norm)
+  return pathToFileURL(nodePath.resolve(fsPath)).toString()
 }
 
 export function classNameToRelPath(name: string): string {

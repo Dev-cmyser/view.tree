@@ -28,7 +28,7 @@ import { getCompletions } from './completion'
 import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs, getIndexStats } from './indexer'
 import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
-import { uriToFsPath } from './resolver'
+import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resolver'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -139,11 +139,27 @@ connection.onHover(params => {
     const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : ''
     const preview = node && typeof node.clone === 'function' ? String(node.clone([])) : ''
     const defs = [...findClassDefs(token), ...findPropDefs(token)]
-    const target = defs[0]
-    const location = target ? `\nfile: ${target.uri}` : ''
+
+    // If class-like symbol, try to show props from its class file
+    let info = ''
+    if (classLike(token)) {
+        const target = defs[0]
+        const targetUri = target?.uri
+        const targetTree = targetUri ? trees.get(targetUri) : undefined
+        if (targetTree) {
+            // Find class node and collect prop names
+            const classNode: any = (targetTree.kids || []).find((k: any) => String(k.type) === token) || targetTree
+            const props = new Set<string>()
+            for (const kid of (classNode.kids || [])) {
+                const t = String(kid.type || '')
+                if (/^[a-z][\w]*$/.test(t)) props.add(t)
+            }
+            if (props.size) info = `\nprops: ${[...props].join(', ')}`
+        }
+    }
 
     const contents = [
-        `view.tree: ${header}${value}${location}`,
+        `view.tree: ${header}${value}${info}`,
         preview && '```view.tree\n' + preview + '\n```',
     ].filter(Boolean).join('\n')
 
@@ -164,7 +180,7 @@ connection.onDefinition(params => {
     const token = node ? (String(node.type || node.value || '')) : (wr?.text || '')
     if (!token) { log(`[view.tree] definition: no-token`); return null }
 
-    const classHits = findClassDefs(token)
+    let classHits = findClassDefs(token)
     const propHits = findPropDefs(token)
 
     const locs: Location[] = []
@@ -176,6 +192,13 @@ connection.onDefinition(params => {
                 end: { line: hit.spot.line, character: hit.spot.col + hit.spot.length },
             },
         })
+    }
+    // Fallback: if class-like and not indexed yet, point to expected file start
+    if (!locs.length && classLike(token) && workspaceRootFs) {
+        const rel = classNameToRelPath(token)
+        const fsPath = require('path').join(workspaceRootFs, rel)
+        const uriGuess = fsPathToUri(fsPath)
+        locs.push({ uri: uriGuess, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } })
     }
     log(`[view.tree] definition: token=${token} hits=${locs.length}`)
     return (locs.length ? (locs.length === 1 ? locs[0] : locs) : null) as Definition
