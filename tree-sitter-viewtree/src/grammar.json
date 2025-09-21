@@ -1,6 +1,6 @@
 {
   "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
-  "name": "viewtree",
+  "name": "view_tree",
   "rules": {
     "source_file": {
       "type": "REPEAT1",
@@ -9,7 +9,15 @@
         "members": [
           {
             "type": "SYMBOL",
-            "name": "line"
+            "name": "component_decl"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "indented_line"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "top_comment_line"
           },
           {
             "type": "SYMBOL",
@@ -39,24 +47,12 @@
         }
       ]
     },
-    "line": {
+    "component_decl": {
       "type": "SEQ",
       "members": [
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "indent"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
           "type": "SYMBOL",
-          "name": "node_path"
+          "name": "node_path_component"
         },
         {
           "type": "SYMBOL",
@@ -64,12 +60,294 @@
         }
       ]
     },
+    "node_path_component": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "ident"
+          },
+          "named": false,
+          "value": "class_ident"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "sep"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "ident"
+          },
+          "named": false,
+          "value": "class_ident"
+        }
+      ]
+    },
+    "top_comment_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "node_path_top_comment"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "newline"
+        }
+      ]
+    },
+    "node_path_top_comment": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "special_dash"
+          },
+          "named": false,
+          "value": "comment_mark"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "sep"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "node"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "indented_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "indent"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "arrow_property_line"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "property_line"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "indented_comment_line"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "generic_node_line"
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "newline"
+        }
+      ]
+    },
+    "arrow_property_line": {
+      "type": "PREC_RIGHT",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "arrow_both"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "arrow_left"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "arrow_right"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "sep"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "prop_name"
+            },
+            "named": false,
+            "value": "prop_ident"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "sep"
+                  },
+                  {
+                    "type": "ALIAS",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "ident"
+                    },
+                    "named": false,
+                    "value": "class_ident"
+                  }
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "sep"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "node"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "property_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "prop_name"
+          },
+          "named": false,
+          "value": "prop_ident"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "sep"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "node"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "indented_comment_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "special_dash"
+          },
+          "named": false,
+          "value": "comment_mark"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "sep"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "node"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "generic_node_line": {
+      "type": "SYMBOL",
+      "name": "node_path_no_arrow"
+    },
     "node_path": {
       "type": "SEQ",
       "members": [
         {
           "type": "SYMBOL",
           "name": "node"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "sep"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "node"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "node_path_no_arrow": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "node_no_arrow"
         },
         {
           "type": "REPEAT",
@@ -110,7 +388,31 @@
         },
         {
           "type": "SYMBOL",
-          "name": "ident_with_suffix"
+          "name": "special_dash"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_slash"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_star"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_caret"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_at"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_qmark"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_bang"
         },
         {
           "type": "SYMBOL",
@@ -138,15 +440,20 @@
         },
         {
           "type": "SYMBOL",
-          "name": "special_bang"
+          "name": "ident_with_suffix"
         },
         {
           "type": "SYMBOL",
-          "name": "special_qmark"
-        },
+          "name": "ident"
+        }
+      ]
+    },
+    "node_no_arrow": {
+      "type": "CHOICE",
+      "members": [
         {
           "type": "SYMBOL",
-          "name": "special_dash"
+          "name": "raw_string"
         },
         {
           "type": "SYMBOL",
@@ -166,7 +473,35 @@
         },
         {
           "type": "SYMBOL",
-          "name": "ident"
+          "name": "special_qmark"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "special_bang"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_nan"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_pos_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_neg_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "boolean"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "null"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
         }
       ]
     },
@@ -318,6 +653,19 @@
               "name": "bang_immediate"
             }
           ]
+        }
+      ]
+    },
+    "prop_name": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "ident_with_suffix"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "ident"
         }
       ]
     },
@@ -502,7 +850,12 @@
     }
   },
   "extras": [],
-  "conflicts": [],
+  "conflicts": [
+    [
+      "arrow_property_line",
+      "node"
+    ]
+  ],
   "precedences": [],
   "externals": [],
   "inline": [],

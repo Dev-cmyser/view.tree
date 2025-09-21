@@ -1,5 +1,36 @@
 [
   {
+    "type": "arrow_property_line",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "arrow_both",
+          "named": true
+        },
+        {
+          "type": "arrow_left",
+          "named": true
+        },
+        {
+          "type": "arrow_right",
+          "named": true
+        },
+        {
+          "type": "node",
+          "named": true
+        },
+        {
+          "type": "sep",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "blank_line",
     "named": true,
     "fields": {},
@@ -13,6 +44,40 @@
         },
         {
           "type": "newline",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "component_decl",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "newline",
+          "named": true
+        },
+        {
+          "type": "node_path_component",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "generic_node_line",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "node_path_no_arrow",
           "named": true
         }
       ]
@@ -42,7 +107,26 @@
     }
   },
   {
-    "type": "line",
+    "type": "indented_comment_line",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "node",
+          "named": true
+        },
+        {
+          "type": "sep",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "indented_line",
     "named": true,
     "fields": {},
     "children": {
@@ -50,7 +134,19 @@
       "required": true,
       "types": [
         {
+          "type": "arrow_property_line",
+          "named": true
+        },
+        {
+          "type": "generic_node_line",
+          "named": true
+        },
+        {
           "type": "indent",
+          "named": true
+        },
+        {
+          "type": "indented_comment_line",
           "named": true
         },
         {
@@ -58,7 +154,7 @@
           "named": true
         },
         {
-          "type": "node_path",
+          "type": "property_line",
           "named": true
         }
       ]
@@ -152,7 +248,146 @@
     }
   },
   {
-    "type": "node_path",
+    "type": "node_no_arrow",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "lit_nan",
+          "named": true
+        },
+        {
+          "type": "lit_neg_infinity",
+          "named": true
+        },
+        {
+          "type": "lit_pos_infinity",
+          "named": true
+        },
+        {
+          "type": "null",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "raw_string",
+          "named": true
+        },
+        {
+          "type": "special_at",
+          "named": true
+        },
+        {
+          "type": "special_bang",
+          "named": true
+        },
+        {
+          "type": "special_caret",
+          "named": true
+        },
+        {
+          "type": "special_qmark",
+          "named": true
+        },
+        {
+          "type": "special_slash",
+          "named": true
+        },
+        {
+          "type": "special_star",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "node_path_component",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "sep",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "node_path_no_arrow",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "node",
+          "named": true
+        },
+        {
+          "type": "node_no_arrow",
+          "named": true
+        },
+        {
+          "type": "sep",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "node_path_top_comment",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "node",
+          "named": true
+        },
+        {
+          "type": "sep",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "prop_ident",
+    "named": false,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "ident",
+          "named": true
+        },
+        {
+          "type": "ident_with_suffix",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "property_line",
     "named": true,
     "fields": {},
     "children": {
@@ -184,7 +419,34 @@
           "named": true
         },
         {
-          "type": "line",
+          "type": "component_decl",
+          "named": true
+        },
+        {
+          "type": "indented_line",
+          "named": true
+        },
+        {
+          "type": "top_comment_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "top_comment_line",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "newline",
+          "named": true
+        },
+        {
+          "type": "node_path_top_comment",
           "named": true
         }
       ]
@@ -209,6 +471,14 @@
   {
     "type": "boolean",
     "named": true
+  },
+  {
+    "type": "class_ident",
+    "named": false
+  },
+  {
+    "type": "comment_mark",
+    "named": false
   },
   {
     "type": "ident",
