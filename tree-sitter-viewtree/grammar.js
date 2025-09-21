@@ -3,12 +3,6 @@ module.exports = grammar({
 
 	extras: $ => [],
 
-	externals: $ => [
-		$._newline, // 0
-		$._indent, // 1
-		$._dedent, // 2
-	],
-
 	rules: {
 		source_file: $ => repeat1(choice($.blank, $.line)),
 
