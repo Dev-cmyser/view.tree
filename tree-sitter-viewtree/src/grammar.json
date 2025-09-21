@@ -78,26 +78,30 @@
       }
     },
     "component_block": {
-      "type": "REPEAT1",
+      "type": "PREC_RIGHT",
+      "value": 0,
       "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "STRING",
-            "value": "\n"
-          },
-          {
-            "type": "REPEAT1",
-            "content": {
+        "type": "REPEAT1",
+        "content": {
+          "type": "SEQ",
+          "members": [
+            {
               "type": "STRING",
-              "value": "\t"
+              "value": "\n"
+            },
+            {
+              "type": "REPEAT1",
+              "content": {
+                "type": "STRING",
+                "value": "\t"
+              }
+            },
+            {
+              "type": "SYMBOL",
+              "name": "component_line"
             }
-          },
-          {
-            "type": "SYMBOL",
-            "name": "component_line"
-          }
-        ]
+          ]
+        }
       }
     },
     "component_line": {
@@ -204,11 +208,11 @@
             },
             {
               "type": "SYMBOL",
-              "name": "typed_array_head"
+              "name": "array_value"
             },
             {
               "type": "SYMBOL",
-              "name": "dict_head"
+              "name": "object_value"
             },
             {
               "type": "SYMBOL",
@@ -226,14 +230,6 @@
             {
               "type": "CHOICE",
               "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "array_block"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "dict_block"
-                },
                 {
                   "type": "SYMBOL",
                   "name": "component_block"
@@ -282,21 +278,29 @@
       ]
     },
     "dict_head": {
-      "type": "STRING",
-      "value": "*"
+      "type": "PREC",
+      "value": 0,
+      "content": {
+        "type": "STRING",
+        "value": "*"
+      }
     },
     "object_value": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "*"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "dict_block"
-        }
-      ]
+      "type": "PREC",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "*"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "dict_block"
+          }
+        ]
+      }
     },
     "dict_entry": {
       "type": "SEQ",
@@ -338,11 +342,11 @@
             },
             {
               "type": "SYMBOL",
-              "name": "typed_array_head"
+              "name": "array_value"
             },
             {
               "type": "SYMBOL",
-              "name": "dict_head"
+              "name": "object_value"
             }
           ]
         },
@@ -598,11 +602,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "typed_array_head"
+          "name": "array_value"
         },
         {
           "type": "SYMBOL",
-          "name": "dict_head"
+          "name": "object_value"
         }
       ]
     },

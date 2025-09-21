@@ -48,16 +48,13 @@ module.exports = grammar({
 					$.binding_left,
 					$.binding_bi,
 					$.export_binding,
-					$.typed_array_head,
-					$.dict_head,
+					$.array_value,
+					$.object_value,
 					$.factory_in_place,
 					$.value,
 				),
 				optional(
 					choice(
-						// If head chosen, the corresponding block can follow
-						$.array_block, // when typed_array_head used
-						$.dict_block, // when dict_head used
 						$.component_block, // allow nested tuning blocks for factories/classes
 					),
 				),
@@ -72,10 +69,11 @@ module.exports = grammar({
 		array_value: $ => seq($.typed_array_head, $.array_block),
 
 		// "*"          (value head form; body is dict_block)
-		dict_head: _ => '*',
+		// опционально
+		dict_head: _ => prec(0, '*'),
 
 		// Object value in value-position: "*" <dict_block>
-		object_value: $ => seq('*', $.dict_block),
+		object_value: $ => prec(1, seq('*', $.dict_block)),
 
 		// dict entry: <key> ␠ (<binding>|<bi_binding>|<value>|<factory_in_place>|<caret_ref>|<typed_array_head>|<dict_head>) (optional nested block)
 		dict_entry: $ =>
@@ -88,10 +86,10 @@ module.exports = grammar({
 					$.value,
 					$.factory_in_place,
 					$.caret_ref,
-					$.typed_array_head,
-					$.dict_head,
+					$.array_value,
+					$.object_value,
 				),
-				optional(choice($.array_block, $.dict_block, $.component_block)),
+				optional(choice($.component_block)),
 			),
 
 		// dict spread/parent expand: "^" (␠ <prop_name>)?
@@ -139,8 +137,8 @@ module.exports = grammar({
 				$.binding_left,
 				$.binding_bi,
 				$.export_binding,
-				$.typed_array_head,
-				$.dict_head,
+				$.array_value,
+				$.object_value,
 			),
 
 		// --- Values ----------------------------------------------------------
