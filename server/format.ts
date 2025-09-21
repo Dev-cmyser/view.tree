@@ -13,8 +13,7 @@ export function sanitizeSeparators(text: string): string {
     const line = lines[i]
     const m = /^([\t ]*)(.*)$/.exec(line)
     if (!m) continue
-    // Enforce tabs-only indentation: convert any leading spaces to tabs (1:1)
-    const indent = m[1].replace(/ +/g, '\\t')
+    const indent = m[1]
     const rest = m[2]
     if (rest.startsWith('\\')) continue // raw string line: keep spaces
     // collapse multiple spaces in non-raw lines
@@ -26,7 +25,7 @@ export function sanitizeSeparators(text: string): string {
 export function sanitizeLineSpaces(line: string): string {
   const m = /^([\t ]*)(.*)$/.exec(line)
   if (!m) return line
-  const indent = m[1].replace(/ +/g, '\\t')
+  const indent = m[1]
   const rest = m[2]
   if (rest.startsWith('\\')) return line
   return indent + rest.replace(/ {2,}/g, ' ')
@@ -37,9 +36,18 @@ export function spacingDiagnostics(text: string): Array<{ line: number; start: n
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i]
-    const m = /^(\t*)(.*)$/.exec(raw)
+    const m = /^([\t ]*)(.*)$/.exec(raw)
     if (!m) continue
+    const indent = m[1]
     const rest = m[2]
+    // Indentation must be tabs only
+    if (indent.includes(' ')) {
+      const first = indent.indexOf(' ')
+      const last = indent.lastIndexOf(' ')
+      const start = first
+      const end = last + 1
+      issues.push({ line: i, start, end, message: 'Indent must use tabs only' })
+    }
     if (rest.startsWith('\\')) continue
     const ms = /( {2,})/.exec(rest)
     if (!ms) continue
