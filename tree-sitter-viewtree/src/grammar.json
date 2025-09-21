@@ -13,7 +13,7 @@
           },
           {
             "type": "SYMBOL",
-            "name": "line"
+            "name": "node"
           }
         ]
       }
@@ -22,12 +22,16 @@
       "type": "SYMBOL",
       "name": "_newline"
     },
-    "line": {
+    "node": {
       "type": "SEQ",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "node_path"
+          "type": "FIELD",
+          "name": "head",
+          "content": {
+            "type": "SYMBOL",
+            "name": "node_path"
+          }
         },
         {
           "type": "SYMBOL",
@@ -37,8 +41,33 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "suite"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_indent"
+                },
+                {
+                  "type": "REPEAT1",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "blank"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "node"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_dedent"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -47,41 +76,12 @@
         }
       ]
     },
-    "suite": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "_indent"
-        },
-        {
-          "type": "REPEAT1",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "blank"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "line"
-              }
-            ]
-          }
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_dedent"
-        }
-      ]
-    },
     "node_path": {
       "type": "SEQ",
       "members": [
         {
           "type": "SYMBOL",
-          "name": "node"
+          "name": "atom"
         },
         {
           "type": "REPEAT",
@@ -94,7 +94,7 @@
               },
               {
                 "type": "SYMBOL",
-                "name": "node"
+                "name": "atom"
               }
             ]
           }
@@ -108,7 +108,7 @@
         "value": " "
       }
     },
-    "node": {
+    "atom": {
       "type": "CHOICE",
       "members": [
         {

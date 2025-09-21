@@ -1,30 +1,6 @@
 [
   {
-    "type": "blank",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "line",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "node_path",
-          "named": true
-        },
-        {
-          "type": "suite",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "node",
+    "type": "atom",
     "named": true,
     "fields": {},
     "children": {
@@ -99,6 +75,41 @@
     }
   },
   {
+    "type": "blank",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "node",
+    "named": true,
+    "fields": {
+      "head": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "node_path",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "blank",
+          "named": true
+        },
+        {
+          "type": "node",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "node_path",
     "named": true,
     "fields": {},
@@ -107,7 +118,7 @@
       "required": true,
       "types": [
         {
-          "type": "node",
+          "type": "atom",
           "named": true
         },
         {
@@ -131,26 +142,7 @@
           "named": true
         },
         {
-          "type": "line",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "suite",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "blank",
-          "named": true
-        },
-        {
-          "type": "line",
+          "type": "node",
           "named": true
         }
       ]

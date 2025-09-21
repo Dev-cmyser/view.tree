@@ -1,29 +1,50 @@
+// grammar.js — view.tree: тело = нода, рекурсивная вложенность по табам, БЕЗ узла 'suite'.
+// Нужен external scanner ($._newline, $._indent, $._dedent).
+
 module.exports = grammar({
-	name: 'viewtree', // ВАЖНО: без подчеркивания → префикс tree_sitter_viewtree_*
+	name: 'viewtree',
 
 	extras: $ => [],
 
+	externals: $ => [
+		$._newline, // \n (включая финальный)
+		$._indent, // шаг вверх по \t
+		$._dedent, // шаг вниз (сериями)
+	],
+
 	rules: {
-		source_file: $ => repeat1(choice($.blank, $.line)),
+		// Корень: пустые строки или ноды
+		source_file: $ => repeat1(choice($.blank, $.node)),
 
 		blank: $ => $._newline,
 
-		// Любая строка: node_path + newline + опциональный suite
-		line: $ => seq($.node_path, $._newline, optional($.suite)),
-
-		// Вложенный блок: INDENT (>=1 строка/пустая строка) DEDENT
-		suite: $ => seq($._indent, repeat1(choice($.blank, $.line)), $._dedent),
-
-		// Узлы в строке, разделённые РОВНО одним пробелом
-		node_path: $ => seq($.node, repeat(seq($.sep, $.node))),
-
-		sep: _ => token(' '),
-
+		// Нода: голова + \n + (опц.) вложенные строки (ноды или "сырые" строки)
 		node: $ =>
+			seq(
+				field('head', $.node_path),
+				$._newline,
+				optional(seq($._indent, repeat1(choice($.blank, $.node, $.raw_line)), $._dedent)),
+			),
+
+		// "Сырая" строка-тело (как нода): только raw_string + \n + (опц.) вложенный блок
+		raw_line: $ =>
+			seq(
+				field('raw', $.raw_string),
+				$._newline,
+				optional(seq($._indent, repeat1(choice($.blank, $.node, $.raw_line)), $._dedent)),
+			),
+
+		// Голова ноды: атомы, разделённые РОВНО одним пробелом
+		node_path: $ => seq($.atom, repeat(seq($.sep, $.atom))),
+
+		sep: _ => token(' '), // ровно один пробел
+
+		// Атом
+		atom: $ =>
 			choice(
 				$.raw_string,
 
-				// стрелки
+				// стрелки (порядок важен)
 				$.arrow_both,
 				$.arrow_left,
 				$.arrow_right,
@@ -43,26 +64,26 @@ module.exports = grammar({
 				$.lit_neg_infinity,
 				$.number,
 
-				// идентификатор (имена/свойства/фабрики/мульти/мутабельные)
+				// идентификатор с суффиксами (*key, ?, !, *?)
 				$.ident,
 			),
 
-		// --- односимвольные
+		// --- маркеры ---
 		op_dash: _ => token('-'),
 		op_slash: _ => token('/'),
 		op_star: _ => token('*'),
 		op_caret: _ => token('^'),
 		op_at: _ => token('@'),
 
-		// --- стрелки (порядок важен)
+		// --- стрелки ---
 		arrow_both: _ => token('<=>'),
 		arrow_left: _ => token('<='), // после '<=>'
 		arrow_right: _ => token('=>'),
 
-		// --- сырая строка: '\' + всё до \n
+		// --- сырая строка: '\' + всё до конца строки (LF отдаёт $._newline) ---
 		raw_string: _ => token(seq('\\', /[^\n]*/)),
 
-		// --- литералы
+		// --- литералы ---
 		boolean: _ => token(choice('true', 'false')),
 		null: _ => token('null'),
 		lit_nan: _ => token('NaN'),
@@ -77,11 +98,10 @@ module.exports = grammar({
 				),
 			),
 
-		// IDENT:
+		// --- идентификатор с суффиксами ---
 		// NAME_CORE := [ $ A-Za-z _ ] [ \w . $ ]*
 		// KEY_TAIL  := [ \w - . : $ ]+
-		// суффиксы: *KEY?  (где KEY опционален), затем ? или ! (опционально)
-		// также допустим комбинированный *? (т.е. * + ? без KEY)
+		// IDENT     := NAME_CORE ( ('*' KEY_TAIL?)? ( '?' | '!' )? )
 		ident: _ =>
 			token(
 				seq(/[\$A-Za-z_][\w\.\$]*/, optional(seq('*', optional(/[\w\-\.\:\$]+/))), optional(choice('?', '!'))),
