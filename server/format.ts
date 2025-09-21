@@ -13,7 +13,8 @@ export function sanitizeSeparators(text: string): string {
     const line = lines[i]
     const m = /^([\t ]*)(.*)$/.exec(line)
     if (!m) continue
-    const indent = m[1]
+    // Enforce tabs-only indentation: convert any leading spaces to tabs (1:1)
+    const indent = m[1].replace(/ +/g, '\\t')
     const rest = m[2]
     if (rest.startsWith('\\')) continue // raw string line: keep spaces
     // collapse multiple spaces in non-raw lines
@@ -25,7 +26,7 @@ export function sanitizeSeparators(text: string): string {
 export function sanitizeLineSpaces(line: string): string {
   const m = /^([\t ]*)(.*)$/.exec(line)
   if (!m) return line
-  const indent = m[1]
+  const indent = m[1].replace(/ +/g, '\\t')
   const rest = m[2]
   if (rest.startsWith('\\')) return line
   return indent + rest.replace(/ {2,}/g, ' ')
