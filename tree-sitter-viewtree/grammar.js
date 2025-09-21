@@ -20,6 +20,25 @@ module.exports = grammar({
 
 		// Нода: head + LF + (опц.) блок детей (ноды или raw_line) между indent/dedent
 		node: $ =>
+			seq(
+				field('head', $.node_path),
+				$._newline,
+				optional(
+					seq(
+						$._indent,
+						repeat1(
+							choice(
+								$.blank,
+								// ребёнок — нода с равным отступом
+								seq(optional($.eqindent), $.node),
+								// ребёнок — простая сырая строка с равным отступом
+								seq(optional($.eqindent), $.raw_line),
+							),
+						),
+						$._dedent,
+					),
+				),
+			),
 
 		// Равный отступ (съедаем \t на строках того же уровня внутри тела)
 		eqindent: _ => token.immediate(/\t+/),
@@ -105,6 +124,18 @@ module.exports = grammar({
 					optional(choice('+', '-')),
 					choice(seq(/[0-9]+/, optional(seq('.', /[0-9]+/))), seq('.', /[0-9]+/)),
 					optional(seq(/[eE]/, optional(choice('+', '-')), /[0-9]+/)),
+				),
+			),
+
+		// --- идентификатор с суффиксами (*key, ?, !, *?) ---
+		// базовая часть — любые «неоператорные» непробельные символы (включая эмодзи),
+		// затем опционально: '*' KEY? (KEY: [\w\-.:$]+), затем '?' или '!'
+		ident: _ =>
+			token(
+				seq(
+					/[^\s\/\\<>\-\*\^@=\?\!][^\s\/\\<>\-\*\^@=\?\!]*/,
+					optional(seq('*', optional(/[\w\-\.\:\$]+/))),
+					optional(choice('?', '!')),
 				),
 			),
 	},
