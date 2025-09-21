@@ -15,10 +15,10 @@ import {
 	WorkspaceEdit,
 	Range,
 	MessageType,
-    TextEdit,
-    CodeAction,
-    CodeActionKind,
-    FoldingRange,
+	TextEdit,
+	CodeAction,
+	CodeActionKind,
+	FoldingRange,
 } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 import * as fs from 'fs/promises'
@@ -51,8 +51,8 @@ connection.onInitialize((params: InitializeParams) => {
 	log(`[view.tree] onInitialize: workspace=${ws}`)
 	const rootUri = params.workspaceFolders?.[0]?.uri || params.rootUri || ''
 	workspaceRootFs = rootUri ? uriToFsPath(rootUri) : ''
-    return {
-    capabilities: {
+	return {
+		capabilities: {
 			textDocumentSync: {
 				openClose: true,
 				change: TextDocumentSyncKind.Incremental,
@@ -65,9 +65,9 @@ connection.onInitialize((params: InitializeParams) => {
 			referencesProvider: true,
 			renameProvider: { prepareProvider: true },
 			documentFormattingProvider: true,
-        codeActionProvider: true,
-        foldingRangeProvider: true,
-		semanticTokensProvider: {
+			codeActionProvider: true,
+			foldingRangeProvider: true,
+			semanticTokensProvider: {
 				legend: {
 					tokenTypes: [
 						'namespace',
@@ -156,13 +156,13 @@ documents.onDidClose(ev => {
 
 // Kick off a background project scan after initialize
 connection.onInitialized(async () => {
-    if (!workspaceRootFs) return
-    try {
-        log(`[scan] start root=${workspaceRootFs}`)
-        await scanProject(workspaceRootFs, trees as any, updateIndexForDoc, log)
-    } catch (e:any) {
-        log(`[scan] failed: ${e?.message || e}`)
-    }
+	if (!workspaceRootFs) return
+	try {
+		log(`[scan] start root=${workspaceRootFs}`)
+		await scanProject(workspaceRootFs, trees as any, updateIndexForDoc, log)
+	} catch (e: any) {
+		log(`[scan] failed: ${e?.message || e}`)
+	}
 })
 
 connection.onCompletion(params => {
@@ -389,34 +389,53 @@ connection.onCodeAction(params => {
 	return [action]
 })
 
+// Format-on-save via WillSaveWaitUntil
+connection.onWillSaveTextDocumentWaitUntil(params => {
+	const uri = params.textDocument.uri
+	const doc = documents.get(uri)
+	if (!doc) return []
+	const original = doc.getText()
+	const formatted = formatText(original, uri)
+	const changed = formatted !== original
+	log(`[willSave] uri=${uri} changed=${changed}`)
+	if (!changed) return []
+	const edit: TextEdit = {
+		range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
+		newText: formatted,
+	}
+	return [edit]
+})
+
 // Folding ranges based on indentation (tabs)
 connection.onFoldingRanges(params => {
-    const uri = params.textDocument.uri
-    const doc = documents.get(uri)
-    if (!doc) return []
-    const text = doc.getText()
-    const lines = text.replace(/\r\n?/g, '\n').split('\n')
-    const indents = lines.map(l => {
-        const m = /^(\t*)/.exec(l)
-        return m ? m[1].length : 0
-    })
-    const ranges: FoldingRange[] = []
-    for (let i = 0; i < lines.length - 1; i++) {
-        const here = indents[i]
-        const next = indents[i + 1]
-        if (next > here) {
-            // start of a block; find end where indent returns to here or less
-            let end = i + 1
-            for (let k = i + 1; k < lines.length; k++) {
-                if (indents[k] <= here) { break }
-                end = k
-            }
-            if (end > i + 0) {
-                ranges.push({ startLine: i, endLine: end })
-            }
-        }
-    }
-    return ranges
+	const uri = params.textDocument.uri
+	const doc = documents.get(uri)
+	if (!doc) return []
+	const text = doc.getText()
+	const lines = text.replace(/\r\n?/g, '\n').split('\n')
+	const indents = lines.map(l => {
+		const m = /^(\t*)/.exec(l)
+		return m ? m[1].length : 0
+	})
+	const ranges: FoldingRange[] = []
+	for (let i = 0; i < lines.length - 1; i++) {
+		const here = indents[i]
+		const next = indents[i + 1]
+		if (next > here) {
+			// start of a block; find end where indent returns to here or less
+			let end = i + 1
+			for (let k = i + 1; k < lines.length; k++) {
+				if (indents[k] <= here) {
+					break
+				}
+				end = k
+			}
+			if (end > i + 0) {
+				ranges.push({ startLine: i, endLine: end })
+			}
+		}
+	}
+	return ranges
 })
 
 // Semantic Tokens (full document)
