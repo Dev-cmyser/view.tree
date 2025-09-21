@@ -28,7 +28,6 @@
 	"bindings": {
 		"c": false,
 		"go": false,
-		// use mol_tree2 for syntax
 		"node": false,
 		"python": false,
 		"rust": false,

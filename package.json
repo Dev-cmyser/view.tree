@@ -1,5 +1,5 @@
 {
-	"name": "view.tree",
+	"name": "view-tree",
 	"displayName": "view.tree LSP",
 	"description": "Experimental Tree-sitter grammar and LSP for view.tree",
 	"version": "0.1.0",
@@ -38,8 +38,6 @@
 	},
 	"dependencies": {
 		"mol_tree2": "^1.0.1196",
-		"tree-sitter": "^0.25.0",
-		"tree-sitter-viewtree": "file:./tree-sitter-viewtree",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12"
 	},
@@ -48,5 +46,12 @@
 		"@types/vscode": "^1.76.0",
 		"typescript": "^5.9.2",
 		"vscode-languageclient": "^9.0.1"
+	},
+	"publisher": "devcmyser",
+	"categories": [
+		"Programming Languages"
+	],
+	"repository": {
+		"url": "https://github.com/Dev-cmyser/view.tree"
 	}
 }
