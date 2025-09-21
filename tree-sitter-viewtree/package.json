@@ -23,6 +23,7 @@
 		"prebuilds/**",
 		"bindings/node/*",
 		"queries/*",
+		"../highlights/TreeSitter/*",
 		"src/**",
 		"*.wasm"
 	],

@@ -8,7 +8,8 @@
 			"scope": "source.viewtree",
 			"file-types": ["view.tree"],
 			"injection-regex": "^viewtree$",
-			"class-name": "TreeSitterViewtree"
+			"class-name": "TreeSitterViewtree",
+			"highlights": "../highlights/TreeSitter/highlights.scm"
 		}
 	],
 	"metadata": {
@@ -28,7 +29,7 @@
 	"bindings": {
 		"c": false,
 		"go": false,
-		"node": false,
+		"node": true,
 		"python": false,
 		"rust": false,
 		"swift": false,

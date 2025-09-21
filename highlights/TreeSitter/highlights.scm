@@ -1,46 +1,98 @@
-; ===== Компоненты =====
-(component_name) @constructor
-(component_def name: (component_name) @type)
-(component_def base: (component_name) @type.builtin)
+; ===== Компоненты (верхние строки вида: Ident [$Base]) =====
+; bog_horrorgamelanding_card $mol_link
+(line
+  (node_path
+    (ident) @constructor
+    (sep)
+    (ident) @type))
+; Вариант без родителя: просто помечаем имя компонента как конструктор
+(line
+  (node_path
+    (ident) @constructor))
 
-; ===== Свойства =====
-(property_line
-  key: (property_id) @property)
-(property_id (prop_suffix) @operator) ; ! ? * помечаем как оператор/модификатор
-(subcomponent_line
-  (property_line
-    key: (property_id) @property))
+; ===== Свойства (любой отступ + первый узел ident) =====
+;     sub /
+;     name
+(line
+  (indent)
+  (node_path
+    (ident) @property))
+
+; Свойство внутри подкомпонента (строка с двумя+ табами также поймается правилом выше)
 
 ; ===== Операторы биндингов =====
-(bind_op) @operator
-(dash_end) @punctuation.delimiter
+(arrow_both) @operator         ; <=>
+(arrow_left) @operator         ; <=
+(arrow_right) @operator        ; =>
 
-; ===== Литералы / примитивы =====
-(string_literal) @string
-(string_line) @string
-(number) @number
-(boolean) @constant.builtin
-(null_kw) @constant.builtin
+; ===== Спецсимволы-структуры =====
+(special_slash) @punctuation.special   ; "/"
+(special_star) @punctuation.special    ; "*"
+(special_caret) @punctuation.special   ; "^"
 
-; ===== Списки / словари / спецстроки =====
-(list_marker) @punctuation.special     ; "/"
-(dict_marker) @punctuation.special     ; "*"
-(typed_list) @constructor              ; "/ $Type"
-(caret_line) @punctuation.special      ; "^"
+; ===== Локализация: "@ \строка" =====
+(line
+  (node_path
+    (special_at)
+    (raw_string) @string.special))
 
-; ===== Локализация =====
-(localized_string) @string.special
+; ===== Сырые строки =====
+(raw_string) @string
 
-; ===== Идентификаторы =====
-(property_id) @variable
+; ===== Числа / булевы / null / спец-числа =====
+; всё это — узлы типа (ident), выделяем предикатами
+; Boolean
+(ident) @constant.builtin
+  (#match? @constant.builtin "^(true|false)$")
+
+; null
+(ident) @constant.builtin
+  (#match? @constant.builtin "^null$")
+
+; NaN / Infinity
+(ident) @number
+  (#match? @number "^(NaN|[+-]?Infinity)$")
+
+; обычные числа (целые/десятичные со знаком)
+(ident) @number
+  (#match? @number "^[+-]?[0-9]+(\\.[0-9]+)?$")
+
+; ===== Идентификаторы по умолчанию =====
 (ident) @variable
 
-; ===== Отступы / комментарии =====
+; ===== Отступы / комментарии / разделители =====
 (indent) @punctuation.whitespace
-(remark_top) @comment
-(remark_line) @comment
+
+; Комментарии: строка, где первый узел — "-"
+(line
+  (node_path
+    (special_dash) @comment
+    . (_)*))         ; всё остальное в строке тоже считаем комментарием
+
+; одиночный "-" как коммент-узел
+(special_dash) @comment
+
+; В качестве «разделителя» по желанию можно подсветить конец строки после '-'
+; (нет отдельного узла dash_end в v1, поэтому опускаем)
 
 ; ===== Подкомпонент: "<= name $Type" =====
-(subcomponent_line) @keyword
-(subcomponent_line name: (ident) @variable)
-(subcomponent_line type: (component_name) @type)
+;     <= image $mol_image
+(line
+  (indent)
+  (node_path
+    (arrow_left) @keyword
+    (sep)?
+    (ident) @variable
+    (sep)
+    (ident) @type))
+
+; Вариант с двунаправленной связью свойства: "uri <=> card_url"
+;     uri <=> card_url
+(line
+  (indent)
+  (node_path
+    (ident) @property
+    (sep)
+    (arrow_both) @operator
+    (sep)
+    (ident) @variable))

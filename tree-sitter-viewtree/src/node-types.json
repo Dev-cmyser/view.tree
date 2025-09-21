@@ -1,207 +1,80 @@
 [
   {
-    "type": "bind_op",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "binding_rhs",
+    "type": "line",
     "named": true,
     "fields": {},
     "children": {
       "multiple": true,
       "required": true,
       "types": [
-        {
-          "type": "component_name",
-          "named": true
-        },
-        {
-          "type": "primitive",
-          "named": true
-        },
-        {
-          "type": "property_id",
-          "named": true
-        },
-        {
-          "type": "string_literal",
-          "named": true
-        },
-        {
-          "type": "typed_list",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "blank_line",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "newline",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "boolean",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "component_def",
-    "named": true,
-    "fields": {
-      "base": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "component_name",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "component_name",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "indented_node",
-          "named": true
-        },
-        {
-          "type": "newline",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "dash_end",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "indented_node",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "caret_line",
-          "named": true
-        },
         {
           "type": "indent",
           "named": true
         },
         {
-          "type": "indented_node",
-          "named": true
-        },
-        {
           "type": "newline",
           "named": true
         },
         {
-          "type": "property_line",
-          "named": true
-        },
-        {
-          "type": "remark_line",
-          "named": true
-        },
-        {
-          "type": "string_line",
-          "named": true
-        },
-        {
-          "type": "subcomponent_line",
+          "type": "node_path",
           "named": true
         }
       ]
     }
   },
   {
-    "type": "list_type",
+    "type": "node",
     "named": true,
     "fields": {},
     "children": {
       "multiple": false,
-      "required": false,
+      "required": true,
       "types": [
         {
-          "type": "component_name",
+          "type": "arrow_both",
+          "named": true
+        },
+        {
+          "type": "arrow_left",
+          "named": true
+        },
+        {
+          "type": "arrow_right",
           "named": true
         },
         {
           "type": "ident",
           "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "localized_string",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
+        },
         {
-          "type": "string_literal",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "primitive",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "boolean",
+          "type": "raw_string",
           "named": true
         },
         {
-          "type": "null_kw",
+          "type": "special_at",
           "named": true
         },
         {
-          "type": "number",
+          "type": "special_caret",
+          "named": true
+        },
+        {
+          "type": "special_dash",
+          "named": true
+        },
+        {
+          "type": "special_slash",
+          "named": true
+        },
+        {
+          "type": "special_star",
           "named": true
         }
       ]
     }
   },
   {
-    "type": "property_id",
+    "type": "node_path",
     "named": true,
     "fields": {},
     "children": {
@@ -209,87 +82,11 @@
       "required": true,
       "types": [
         {
-          "type": "ident",
+          "type": "node",
           "named": true
         },
         {
-          "type": "prop_suffix",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "property_line",
-    "named": true,
-    "fields": {
-      "key": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "property_id",
-            "named": true
-          }
-        ]
-      },
-      "op": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "bind_op",
-            "named": true
-          }
-        ]
-      },
-      "rhs": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "binding_rhs",
-            "named": true
-          }
-        ]
-      },
-      "value": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "value",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "dash_end",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "remark_line",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "remark_top",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "newline",
+          "type": "sep",
           "named": true
         }
       ]
@@ -302,170 +99,26 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "blank_line",
-          "named": true
-        },
-        {
-          "type": "component_def",
-          "named": true
-        },
-        {
-          "type": "remark_top",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "string_line",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "string_literal",
-    "named": true,
-    "fields": {}
-  },
-  {
-    "type": "subcomponent_line",
-    "named": true,
-    "fields": {
-      "inline": {
-        "multiple": true,
-        "required": false,
-        "types": [
-          {
-            "type": "property_line",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "ident",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "component_name",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "typed_list",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
       "required": true,
       "types": [
         {
-          "type": "list_marker",
-          "named": true
-        },
-        {
-          "type": "list_type",
+          "type": "line",
           "named": true
         }
       ]
     }
   },
   {
-    "type": "value",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "component_name",
-          "named": true
-        },
-        {
-          "type": "dict_marker",
-          "named": true
-        },
-        {
-          "type": "localized_string",
-          "named": true
-        },
-        {
-          "type": "primitive",
-          "named": true
-        },
-        {
-          "type": "string_literal",
-          "named": true
-        },
-        {
-          "type": "typed_list",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": " ",
-    "named": false
-  },
-  {
-    "type": "-",
-    "named": false
-  },
-  {
-    "type": "<=",
-    "named": false
-  },
-  {
-    "type": "<=>",
-    "named": false
-  },
-  {
-    "type": "=>",
-    "named": false
-  },
-  {
-    "type": "@",
-    "named": false
-  },
-  {
-    "type": "\\",
-    "named": false
-  },
-  {
-    "type": "boolean",
-    "named": false
-  },
-  {
-    "type": "caret_line",
+    "type": "arrow_both",
     "named": true
   },
   {
-    "type": "component_name",
+    "type": "arrow_left",
     "named": true
   },
   {
-    "type": "dict_marker",
+    "type": "arrow_right",
     "named": true
-  },
-  {
-    "type": "false",
-    "named": false
   },
   {
     "type": "ident",
@@ -476,35 +129,35 @@
     "named": true
   },
   {
-    "type": "list_marker",
-    "named": true
-  },
-  {
     "type": "newline",
     "named": true
   },
   {
-    "type": "null_kw",
+    "type": "raw_string",
     "named": true
   },
   {
-    "type": "number",
-    "named": false
-  },
-  {
-    "type": "number",
+    "type": "sep",
     "named": true
   },
   {
-    "type": "prop_suffix",
+    "type": "special_at",
     "named": true
   },
   {
-    "type": "string",
-    "named": false
+    "type": "special_caret",
+    "named": true
   },
   {
-    "type": "true",
-    "named": false
+    "type": "special_dash",
+    "named": true
+  },
+  {
+    "type": "special_slash",
+    "named": true
+  },
+  {
+    "type": "special_star",
+    "named": true
   }
 ]
