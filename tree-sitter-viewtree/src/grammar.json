@@ -358,14 +358,6 @@
               "members": [
                 {
                   "type": "SYMBOL",
-                  "name": "array_block"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "dict_block"
-                },
-                {
-                  "type": "SYMBOL",
                   "name": "component_block"
                 }
               ]

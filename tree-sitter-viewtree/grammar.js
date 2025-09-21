@@ -45,17 +45,23 @@ module.exports = grammar({
 				field('prop', $.prop_name),
 				$.sp,
 				choice(
-					$.binding_left,
-					$.binding_bi,
-					$.export_binding,
-					$.array_value,
-					$.object_value,
-					$.factory_in_place,
-					$.value,
-				),
-				optional(
-					choice(
-						$.component_block, // allow nested tuning blocks for factories/classes
+					// 1) обычные варианты — без блока
+					seq(
+						choice(
+							$.binding_left,
+							$.binding_bi,
+							$.export_binding,
+							$.array_value,
+							$.object_value,
+							$.value_plain,
+						),
+					),
+					// 2) фабрики — можно с блоком (настройка)
+					seq(choice($.factory_in_place, $.value_bare_factory), optional($.component_block)),
+					optional(
+						choice(
+							$.component_block, // allow nested tuning blocks for factories/classes
+						),
 					),
 				),
 			),
@@ -155,6 +161,11 @@ module.exports = grammar({
 				$.class_ref,
 			),
 
+		// сразу под правилом value добавь:
+		value_bare_factory: $ => $.class_ref,
+
+		value_plain: $ =>
+			choice($.null, $.boolean, $.number, $.string, $.localized_string, $.array_value, $.object_value),
 		// class reference: "$ident"
 		class_ref: _ => /\$[A-Za-z0-9_]+/,
 
