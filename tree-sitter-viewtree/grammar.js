@@ -1,24 +1,18 @@
-// grammar.js — view.tree: тело = нода, рекурсивная вложенность по табам (без 'suite').
-// Нужен external scanner: $._newline, $._indent, $._dedent.
-
 module.exports = grammar({
 	name: 'viewtree',
-
 	extras: $ => [],
 
 	externals: $ => [
-		$._newline, // LF (включая финальный)
-		$._indent, // шаг вверх по количеству \t
-		$._dedent, // шаг вниз (сериями)
+		$._newline,
+		$._indent,
+		$._dedent,
+		$._eqindent, // ← новый внешний токен
 	],
 
 	rules: {
-		// Корень: пустые строки или ноды
 		source_file: $ => repeat1(choice($.blank, $.node)),
-
 		blank: $ => $._newline,
 
-		// Нода: head + LF + (опц.) блок детей (ноды или raw_line) между indent/dedent
 		node: $ =>
 			seq(
 				field('head', $.node_path),
@@ -29,8 +23,8 @@ module.exports = grammar({
 						repeat1(
 							choice(
 								$.blank,
-								$.node,
-								seq(optional($.eqindent), $.raw_line),
+								seq(optional($._eqindent), $.node), // ← тут
+								seq(optional($._eqindent), $.raw_line), // ← и тут
 							),
 						),
 						$._dedent,
@@ -38,52 +32,43 @@ module.exports = grammar({
 				),
 			),
 
-		// Равный отступ (съедаем \t на строках того же уровня внутри тела)
-		eqindent: _ => token.immediate(/\t+/),
+		// УДАЛИ это:
+		// eqindent: _ => token.immediate(/\t+/),
 
-		// Простая "сырая" строка-ребёнок: только \... + LF (без своей вложенности)
 		raw_line: $ => seq(field('raw', $.raw_string), $._newline),
 
-		// Голова ноды: первый атом — НЕ raw_string; дальше — любые атомы.
 		node_path: $ => seq($.head_atom, repeat(seq($.sep, $.atom))),
-
-		// Ровно один пробел между атомами
 		sep: _ => token(' '),
 
-		// Первый атом в строке
 		head_atom: $ =>
 			choice(
-				// стрелки
 				$.arrow_both,
 				$.arrow_left,
 				$.arrow_right,
-				// односимвольные маркеры
 				$.op_dash,
 				$.op_slash,
 				$.op_star,
 				$.op_caret,
 				$.op_at,
-				// литералы
 				$.boolean,
 				$.null,
 				$.lit_nan,
 				$.lit_pos_infinity,
 				$.lit_neg_infinity,
 				$.number,
-				// идентификатор с суффиксами
 				$.ident,
 			),
 
-		// Любой последующий атом (разрешаем raw_string)
 		atom: $ =>
 			choice(
 				$.raw_string,
 				$.arrow_both,
 				$.arrow_left,
 				$.arrow_right,
-				$.op_dash,
-				$.op_slash,
+				// важно: длинный токен раньше короткого, чтобы '/string' не раскалывался
 				$.slash_ident,
+				$.op_slash,
+				$.op_dash,
 				$.op_star,
 				$.op_caret,
 				$.op_at,
@@ -96,25 +81,20 @@ module.exports = grammar({
 				$.ident,
 			),
 
-		// '/string' как единый атом, чтобы не дробить на '/' и идентификатор
 		slash_ident: _ => token(seq('/', /[^\s\/\\<>\-\*\^@=\?\!][^\s\/\\<>\-\*\^@=\?\!]*/)),
 
-		// --- односимвольные ---
 		op_dash: _ => token('-'),
 		op_slash: _ => token('/'),
 		op_star: _ => token('*'),
 		op_caret: _ => token('^'),
 		op_at: _ => token('@'),
 
-		// --- стрелки ---
 		arrow_both: _ => token('<=>'),
-		arrow_left: _ => token('<='), // объявлять после '<=>'
+		arrow_left: _ => token('<='),
 		arrow_right: _ => token('=>'),
 
-		// --- сырая строка: '\' до конца строки (LF отдаёт $._newline) ---
 		raw_string: _ => token(seq('\\', /[^\n]*/)),
 
-		// --- литералы ---
 		boolean: _ => token(choice('true', 'false')),
 		null: _ => token('null'),
 		lit_nan: _ => token('NaN'),
@@ -129,9 +109,6 @@ module.exports = grammar({
 				),
 			),
 
-		// --- идентификатор с суффиксами (*key, ?, !, *?) ---
-		// базовая часть — любые «неоператорные» непробельные символы (включая эмодзи),
-		// затем опционально: '*' KEY? (KEY: [\w\-.:$]+), затем '?' или '!'
 		ident: _ =>
 			token(
 				seq(

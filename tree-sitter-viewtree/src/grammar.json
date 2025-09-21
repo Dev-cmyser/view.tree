@@ -57,8 +57,25 @@
                         "name": "blank"
                       },
                       {
-                        "type": "SYMBOL",
-                        "name": "node"
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "_eqindent"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "node"
+                          }
+                        ]
                       },
                       {
                         "type": "SEQ",
@@ -68,7 +85,7 @@
                             "members": [
                               {
                                 "type": "SYMBOL",
-                                "name": "eqindent"
+                                "name": "_eqindent"
                               },
                               {
                                 "type": "BLANK"
@@ -96,13 +113,6 @@
           ]
         }
       ]
-    },
-    "eqindent": {
-      "type": "IMMEDIATE_TOKEN",
-      "content": {
-        "type": "PATTERN",
-        "value": "\\t+"
-      }
     },
     "raw_line": {
       "type": "SEQ",
@@ -620,6 +630,10 @@
     {
       "type": "SYMBOL",
       "name": "_dedent"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_eqindent"
     }
   ],
   "inline": [],

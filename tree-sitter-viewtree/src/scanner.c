@@ -1,15 +1,8 @@
-
-// src/scanner.c — внешний сканер для viewtree: LF, INDENT/DEDENT по количеству
-// табов. Строго табы в начале строки. Пустые строки учитываются (как NEWLINE).
 #include <stdbool.h>
 #include <string.h>
 #include <tree_sitter/parser.h>
 
-enum TokenType {
-  NEWLINE, // $._newline
-  INDENT,  // $._indent
-  DEDENT,  // $._dedent
-};
+enum TokenType { NEWLINE, INDENT, DEDENT, EQINDENT };
 
 typedef struct {
   uint32_t stack[1024];
@@ -18,57 +11,52 @@ typedef struct {
   bool emitted_final_newline;
 } Scanner;
 
+static inline bool is_tab(int32_t c) { return c == '\t'; }
+static inline bool is_lf(int32_t c) { return c == '\n'; }
+static inline bool is_cr(int32_t c) { return c == '\r'; }
+static inline bool is_sp(int32_t c) { return c == ' '; }
+
 void *tree_sitter_viewtree_external_scanner_create() {
   Scanner *s = (Scanner *)calloc(1, sizeof(Scanner));
+  s->stack[0] = 0;
   s->size = 1;
-  s->stack[0] = 0; // базовый уровень
   s->at_line_start = true;
   s->emitted_final_newline = false;
   return s;
 }
+void tree_sitter_viewtree_external_scanner_destroy(void *p) { free(p); }
 
-void tree_sitter_viewtree_external_scanner_destroy(void *payload) {
-  free(payload);
-}
-
-unsigned tree_sitter_viewtree_external_scanner_serialize(void *payload,
-                                                         char *buffer) {
-  Scanner *s = (Scanner *)payload;
+unsigned tree_sitter_viewtree_external_scanner_serialize(void *p, char *b) {
+  Scanner *s = (Scanner *)p;
   unsigned bytes = 0;
-  memcpy(buffer + bytes, s->stack, s->size * sizeof(uint32_t));
+  memcpy(b + bytes, s->stack, s->size * sizeof(uint32_t));
   bytes += s->size * sizeof(uint32_t);
-  buffer[bytes++] = (char)s->at_line_start;
-  buffer[bytes++] = (char)s->emitted_final_newline;
+  b[bytes++] = (char)s->at_line_start;
+  b[bytes++] = (char)s->emitted_final_newline;
   return bytes;
 }
-
-void tree_sitter_viewtree_external_scanner_deserialize(void *payload,
-                                                       const char *buffer,
-                                                       unsigned length) {
-  Scanner *s = (Scanner *)payload;
-  if (length < 2) {
-    s->size = 1;
+void tree_sitter_viewtree_external_scanner_deserialize(void *p, const char *b,
+                                                       unsigned n) {
+  Scanner *s = (Scanner *)p;
+  if (n < 2) {
     s->stack[0] = 0;
+    s->size = 1;
     s->at_line_start = true;
     s->emitted_final_newline = false;
     return;
   }
-  unsigned count = (length - 2) / sizeof(uint32_t);
+  unsigned count = (n - 2) / sizeof(uint32_t);
   s->size = count ? count : 1;
-  memcpy(s->stack, buffer, s->size * sizeof(uint32_t));
-  s->at_line_start = buffer[length - 2];
-  s->emitted_final_newline = buffer[length - 1];
+  memcpy(s->stack, b, s->size * sizeof(uint32_t));
+  s->at_line_start = b[n - 2];
+  s->emitted_final_newline = b[n - 1];
 }
 
-static inline bool is_tab(int32_t c) { return c == '\t'; }
-static inline bool is_lf(int32_t c) { return c == '\n'; }
+bool tree_sitter_viewtree_external_scanner_scan(void *p, TSLexer *lx,
+                                                const bool valid[]) {
+  Scanner *s = (Scanner *)p;
 
-bool tree_sitter_viewtree_external_scanner_scan(void *payload, TSLexer *lx,
-                                                const bool *valid) {
-  Scanner *s = (Scanner *)payload;
-
-  // EOF: сначала единоразово отдать финальный NEWLINE (требование "файл
-  // заканчивается LF"), затем сдренить все DEDENT до нуля.
+  // EOF: финальный NEWLINE (один раз), затем слить DEDENTы
   if (lx->eof(lx)) {
     if (!s->emitted_final_newline && valid[NEWLINE]) {
       s->emitted_final_newline = true;
@@ -84,40 +72,50 @@ bool tree_sitter_viewtree_external_scanner_scan(void *payload, TSLexer *lx,
     return false;
   }
 
-  int32_t c = lx->lookahead;
-
-  // Явный перевод строки
-  if (valid[NEWLINE] && is_lf(c)) {
+  // Голый LF => NEWLINE
+  if (valid[NEWLINE] && is_lf(lx->lookahead)) {
     lx->advance(lx, true);
     lx->result_symbol = NEWLINE;
     s->at_line_start = true;
     return true;
   }
 
-  // Обработка отступа только в самом начале строки
-  if (s->at_line_start && (valid[INDENT] || valid[DEDENT])) {
-    // Считаем ТОЛЬКО табы
-    uint32_t col = 0;
+  // Начало логической строки: считаем \t и решаем INDENT/EQINDENT/DEDENT
+  if (s->at_line_start && (valid[INDENT] || valid[DEDENT] || valid[EQINDENT])) {
+    // игнорируем CR и ведущие пробелы (они не влияют на уровень)
+    while (is_cr(lx->lookahead) || is_sp(lx->lookahead))
+      lx->advance(lx, true);
+
+    uint32_t tabs = 0;
     while (is_tab(lx->lookahead)) {
       lx->advance(lx, true);
-      col++;
+      tabs++;
     }
-    s->at_line_start = false;
+
+    // пустая линия вида <tabs>* LF — NEWLINE поймается выше на след. вызове
+    if (is_lf(lx->lookahead))
+      return false;
 
     uint32_t prev = s->stack[s->size - 1];
 
-    if (col > prev && valid[INDENT]) {
-      s->stack[s->size++] = col;
+    if (tabs > prev && valid[INDENT]) {
+      s->stack[s->size++] = tabs;
+      s->at_line_start = false;
       lx->result_symbol = INDENT;
       return true;
     }
-    if (col < prev && valid[DEDENT]) {
-      // отдаём по одному DEDENT за вызов
-      s->size--;
+    if (tabs == prev && valid[EQINDENT]) {
+      s->at_line_start = false;
+      lx->result_symbol = EQINDENT;
+      return true;
+    }
+    if (tabs < prev && valid[DEDENT]) {
+      s->size--; /* остаёмся at_line_start=true */
       lx->result_symbol = DEDENT;
       return true;
     }
-    // col == prev: ни indent, ни dedent
+    s->at_line_start = false;
+    return false;
   }
 
   return false;

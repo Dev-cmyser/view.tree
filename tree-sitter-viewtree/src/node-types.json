@@ -178,10 +178,6 @@
           "named": true
         },
         {
-          "type": "eqindent",
-          "named": true
-        },
-        {
           "type": "node",
           "named": true
         },
@@ -265,10 +261,6 @@
   },
   {
     "type": "boolean",
-    "named": true
-  },
-  {
-    "type": "eqindent",
     "named": true
   },
   {
