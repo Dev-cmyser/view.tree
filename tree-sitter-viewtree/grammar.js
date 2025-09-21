@@ -29,9 +29,7 @@ module.exports = grammar({
 						repeat1(
 							choice(
 								$.blank,
-								// ребёнок — нода с равным отступом
-								seq(optional($.eqindent), $.node),
-								// ребёнок — простая сырая строка с равным отступом
+								$.node,
 								seq(optional($.eqindent), $.raw_line),
 							),
 						),
@@ -85,6 +83,7 @@ module.exports = grammar({
 				$.arrow_right,
 				$.op_dash,
 				$.op_slash,
+				$.slash_ident,
 				$.op_star,
 				$.op_caret,
 				$.op_at,
@@ -96,6 +95,9 @@ module.exports = grammar({
 				$.number,
 				$.ident,
 			),
+
+		// '/string' как единый атом, чтобы не дробить на '/' и идентификатор
+		slash_ident: _ => token(seq('/', /[^\s\/\\<>\-\*\^@=\?\!][^\s\/\\<>\-\*\^@=\?\!]*/)),
 
 		// --- односимвольные ---
 		op_dash: _ => token('-'),

@@ -70,6 +70,10 @@
         {
           "type": "raw_string",
           "named": true
+        },
+        {
+          "type": "slash_ident",
+          "named": true
         }
       ]
     }
@@ -317,6 +321,10 @@
   },
   {
     "type": "sep",
+    "named": true
+  },
+  {
+    "type": "slash_ident",
     "named": true
   }
 ]
