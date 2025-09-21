@@ -1,98 +1,81 @@
-; ===== Компоненты (верхние строки вида: Ident [$Base]) =====
-; bog_horrorgamelanding_card $mol_link
-(line
-  (node_path
-    (ident) @constructor
-    (sep)
-    (ident) @type))
-; Вариант без родителя: просто помечаем имя компонента как конструктор
-(line
-  (node_path
-    (ident) @constructor))
+;; queries/highlights.scm — view_tree
 
-; ===== Свойства (любой отступ + первый узел ident) =====
-;     sub /
-;     name
-(line
-  (indent)
-  (node_path
-    (ident) @property))
-
-; Свойство внутри подкомпонента (строка с двумя+ табами также поймается правилом выше)
-
-; ===== Операторы биндингов =====
-(arrow_both) @operator         ; <=>
-(arrow_left) @operator         ; <=
-(arrow_right) @operator        ; =>
-
-; ===== Спецсимволы-структуры =====
-(special_slash) @punctuation.special   ; "/"
-(special_star) @punctuation.special    ; "*"
-(special_caret) @punctuation.special   ; "^"
-
-; ===== Локализация: "@ \строка" =====
-(line
-  (node_path
-    (special_at)
-    (raw_string) @string.special))
-
-; ===== Сырые строки =====
-(raw_string) @string
-
-; ===== Числа / булевы / null / спец-числа =====
-; всё это — узлы типа (ident), выделяем предикатами
-; Boolean
-(ident) @constant.builtin
-  (#match? @constant.builtin "^(true|false)$")
-
-; null
-(ident) @constant.builtin
-  (#match? @constant.builtin "^null$")
-
-; NaN / Infinity
-(ident) @number
-  (#match? @number "^(NaN|[+-]?Infinity)$")
-
-; обычные числа (целые/десятичные со знаком)
-(ident) @number
-  (#match? @number "^[+-]?[0-9]+(\\.[0-9]+)?$")
-
-; ===== Идентификаторы по умолчанию =====
-(ident) @variable
-
-; ===== Отступы / комментарии / разделители =====
+;; ===== БАЗА =====
+(sep) @punctuation.delimiter
+(newline) @punctuation.delimiter
 (indent) @punctuation.whitespace
 
-; Комментарии: строка, где первый узел — "-"
+;; Операторы/стрелки (через node-обёртку)
+(node (arrow_left))  @operator
+(node (arrow_right)) @operator
+(node (arrow_both))  @operator
+
+(node (special_slash)) @operator   ; /
+(node (special_star))  @operator   ; *
+(node (special_caret)) @operator   ; ^
+(node (special_at))    @operator   ; @
+(node (special_dash))  @comment    ; -
+(node (special_qmark)) @operator   ; ?
+(node (special_bang))  @operator   ; !
+
+;; ===== ИДЕНТИФИКАТОРЫ =====
+
+;; ident с «вплотную» суффиксом ?/!
+(node
+  (ident_with_suffix
+    (ident) @property))
+;; Подсветить сам суффикс как оператор:
+(ident_with_suffix (qmark_immediate) @operator)
+(ident_with_suffix (bang_immediate)  @operator)
+
+;; обычный идентификатор
+(node
+  (ident) @property)
+
+;; 1-я пара узлов строки: локальный класс и базовый класс
 (line
   (node_path
-    (special_dash) @comment
-    . (_)*))         ; всё остальное в строке тоже считаем комментарием
+    (node (ident) @type)
+    (sep)
+    (node (ident) @type)))
 
-; одиночный "-" как коммент-узел
-(special_dash) @comment
+;; $-классы как builtins
+(node
+  (ident) @type.builtin
+  (#match? @type.builtin "^\\$"))
 
-; В качестве «разделителя» по желанию можно подсветить конец строки после '-'
-; (нет отдельного узла dash_end в v1, поэтому опускаем)
+;; мультиплексные имена со звёздой на конце
+(node
+  (ident) @property.special
+  (#match? @property.special ".*\\*$"))
 
-; ===== Подкомпонент: "<= name $Type" =====
-;     <= image $mol_image
+;; ===== ЛИТЕРАЛЫ =====
+(node (boolean))          @boolean
+(node (null))             @constant.builtin
+(node (lit_nan))          @constant.builtin
+(node (lit_pos_infinity)) @constant.builtin
+(node (lit_neg_infinity)) @constant.builtin
+(node (number))           @number
+
+;; ===== СТРОКИ =====
+(node (raw_string)) @string
+
+;; локализуемые строки: @ \text
 (line
-  (indent)
   (node_path
-    (arrow_left) @keyword
+    (node (special_at))
     (sep)?
-    (ident) @variable
-    (sep)
-    (ident) @type))
+    (node (raw_string) @string.special)))
 
-; Вариант с двунаправленной связью свойства: "uri <=> card_url"
-;     uri <=> card_url
+;; ===== КОММЕНТАРИИ =====
 (line
-  (indent)
   (node_path
-    (ident) @property
-    (sep)
-    (arrow_both) @operator
-    (sep)
-    (ident) @variable))
+    (node (special_dash)) @comment
+    (sep)?
+    (node (raw_string)) @comment))
+
+(line
+  (node_path
+    (node (special_dash))
+    (sep)?
+    (node (ident)) @comment))
