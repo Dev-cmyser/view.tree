@@ -17,10 +17,11 @@ export function sanitizeSeparators(text: string): string {
 		const rest = m[2]
 		if (rest.startsWith('\\')) continue // raw string line: keep spaces
 		// fix operator tokens broken by spaces, then collapse multiple spaces
-		let fixed = rest
-		fixed = fixed.replace(/<\s*=\s*>/g, '<=>')
-		fixed = fixed.replace(/<\s*=/g, '<=')
-		fixed = fixed.replace(/=\s*>/g, '=>')
+    let fixed = rest
+    // fix only spaced operators (don't touch already-correct tokens)
+    fixed = fixed.replace(/(?:<\s+=\s*>|<\s*=\s+>)/g, '<=>')
+    fixed = fixed.replace(/<\s+=/g, '<=')
+    fixed = fixed.replace(/=\s+>/g, '=>')
 		// disallow raw string after operator usage (invalid), drop trailing raw token
 		fixed = fixed.replace(/((?:<=>|<=|=>)\s+\S+)\s+\\.*$/, '$1')
 		fixed = fixed.replace(/ {2,}/g, ' ')
@@ -35,16 +36,16 @@ export function sanitizeLineSpaces(line: string): string {
 	const indent = m[1]
 	const rest = m[2]
 	if (rest.startsWith('\\')) return line
-	let fixed = rest
-	fixed = fixed.replace(/<\s*=\s*>/g, '<=>')
-	fixed = fixed.replace(/<\s*=/g, '<=')
-	fixed = fixed.replace(/=\s*>/g, '=>')
+  let fixed = rest
+  fixed = fixed.replace(/(?:<\s+=\s*>|<\s*=\s+>)/g, '<=>')
+  fixed = fixed.replace(/<\s+=/g, '<=')
+  fixed = fixed.replace(/=\s+>/g, '=>')
 	fixed = fixed.replace(/ {2,}/g, ' ')
 	return indent + fixed
 }
 
 export function spacingDiagnostics(text: string): Array<{ line: number; start: number; end: number; message: string }> {
-	const issues: Array<{ line: number; start: number; end: number; message: string }> = []
+  const issues: Array<{ line: number; start: number; end: number; message: string }> = []
 	const lines = text.replace(/\r\n?/g, '\n').split('\n')
 	for (let i = 0; i < lines.length; i++) {
 		const raw = lines[i]
@@ -62,11 +63,11 @@ export function spacingDiagnostics(text: string): Array<{ line: number; start: n
 		}
 		if (rest.startsWith('\\')) continue
 		// Broken operator tokens
-		const ops = [
-			{ re: /<\s*=\s*>/g, msg: "Operator '<=>' must not contain spaces" },
-			{ re: /<\s*=/g, msg: "Operator '<=' must not contain spaces" },
-			{ re: /=\s*>/g, msg: "Operator '=>' must not contain spaces" },
-		]
+    const ops: Array<{ re: RegExp; msg: string }> = [
+      { re: /(?:<\s+=\s*>|<\s*=\s+>)/g, msg: "Operator '<=>' must not contain spaces" },
+      { re: /<\s+=/g, msg: "Operator '<=' must not contain spaces" },
+      { re: /=\s+>/g, msg: "Operator '=>' must not contain spaces" },
+    ]
 		for (const { re, msg } of ops) {
 			let m2: RegExpExecArray | null
 			re.lastIndex = 0
