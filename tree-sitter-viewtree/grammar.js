@@ -11,15 +11,17 @@ module.exports = grammar({
 	extras: $ => [],
 
 	supertypes: $ => [$.value],
+	conflicts: $ => [[$.comment]],
 
 	rules: {
 		// file := (top '\n')+
 		source_file: $ => seq(repeat1(seq($.top, '\n'))),
 
-		top: $ => choice($.component, $.comment_line),
+		top: $ => choice($.component, $.comment),
 
 		// $my_comp ␠ $mol_view (component-level block)?
-		component: $ => seq(field('name', $.class_ref), $.sp, field('base', $.class_ref), optional($.component_block)),
+		component: $ =>
+			prec.right(seq(field('name', $.class_ref), $.sp, field('base', $.class_ref), optional($.component_block))),
 
 		// --- Blocks ----------------------------------------------------------
 
@@ -27,13 +29,13 @@ module.exports = grammar({
 		component_block: $ => repeat1(seq('\n', repeat1('\t'), $.component_line)),
 
 		// Inside component: property statements or comments
-		component_line: $ => choice($.property_stmt, $.comment_line),
+		component_line: $ => choice($.property_stmt, $.comment),
 
 		// Array block: one-or-more indented array items
 		array_block: $ => repeat1(seq('\n', repeat1('\t'), $.array_item)),
 
 		// Dict block: one-or-more indented entries/spreads/comments
-		dict_block: $ => repeat1(seq('\n', repeat1('\t'), choice($.dict_entry, $.dict_spread, $.comment_line))),
+		dict_block: $ => repeat1(seq('\n', repeat1('\t'), choice($.dict_entry, $.dict_spread, $.comment))),
 
 		// --- Property statement ---------------------------------------------
 
@@ -218,8 +220,10 @@ module.exports = grammar({
 
 		// Comments ------------------------------------------------------------
 
-		// "-" (␠ <raw_string_line>|<name_token>)? (indented subtree ignored syntactically)
-		comment: $ => seq('-', optional(seq($.sp, token(/[^\n]*/))), repeat(seq('\n', repeat1('\t'), token(/[^\n]*/)))),
+		comment: $ =>
+			prec.left(
+				seq('-', optional(seq($.sp, token(/[^\n]+/))), repeat(seq('\n', repeat1('\t'), token(/[^\n]*/)))),
+			),
 
 		// Single required space token to enforce "single spaces between nodes"
 		sp: _ => token(' '),
