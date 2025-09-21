@@ -195,49 +195,85 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "binding_left"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "binding_bi"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "export_binding"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "array_value"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "object_value"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "factory_in_place"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "value"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "CHOICE",
+              "type": "SEQ",
               "members": [
                 {
-                  "type": "SYMBOL",
-                  "name": "component_block"
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "binding_left"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "binding_bi"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "export_binding"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "array_value"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "object_value"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "value_plain"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "type": "BLANK"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "factory_in_place"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "value_bare_factory"
+                    }
+                  ]
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "component_block"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "component_block"
+                    }
+                  ]
+                },
+                {
+                  "type": "BLANK"
+                }
+              ]
             }
           ]
         }
@@ -636,6 +672,43 @@
         {
           "type": "SYMBOL",
           "name": "class_ref"
+        }
+      ]
+    },
+    "value_bare_factory": {
+      "type": "SYMBOL",
+      "name": "class_ref"
+    },
+    "value_plain": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "null"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "boolean"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "string"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "localized_string"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "array_value"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "object_value"
         }
       ]
     },
