@@ -249,7 +249,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "op_dash"
+          "name": "slash_ident"
         },
         {
           "type": "SYMBOL",
@@ -257,7 +257,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "slash_ident"
+          "name": "op_dash"
         },
         {
           "type": "SYMBOL",
