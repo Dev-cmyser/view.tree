@@ -110,6 +110,34 @@
         },
         {
           "type": "SYMBOL",
+          "name": "ident_with_suffix"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_nan"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_pos_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_neg_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "boolean"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "null"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
+        },
+        {
+          "type": "SYMBOL",
           "name": "special_bang"
         },
         {
@@ -135,30 +163,6 @@
         {
           "type": "SYMBOL",
           "name": "special_at"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "lit_nan"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "lit_pos_infinity"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "lit_neg_infinity"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "boolean"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "null"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "number"
         },
         {
           "type": "SYMBOL",
@@ -256,6 +260,66 @@
         "type": "STRING",
         "value": "@"
       }
+    },
+    "bang_immediate": {
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "STRING",
+        "value": "!"
+      }
+    },
+    "qmark_immediate": {
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "STRING",
+        "value": "?"
+      }
+    },
+    "ident": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "PATTERN",
+            "value": "[\\$A-Za-z_][\\w\\.\\$]*"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "*"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "ident_with_suffix": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "ident"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "qmark_immediate"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "bang_immediate"
+            }
+          ]
+        }
+      ]
     },
     "boolean": {
       "type": "TOKEN",
@@ -411,30 +475,6 @@
                     "value": "[0-9]+"
                   }
                 ]
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "ident": {
-      "type": "TOKEN",
-      "content": {
-        "type": "SEQ",
-        "members": [
-          {
-            "type": "PATTERN",
-            "value": "[\\$A-Za-z_][\\w\\.\\$]*"
-          },
-          {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "STRING",
-                "value": "*"
               },
               {
                 "type": "BLANK"

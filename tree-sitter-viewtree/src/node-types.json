@@ -19,6 +19,29 @@
     }
   },
   {
+    "type": "ident_with_suffix",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "bang_immediate",
+          "named": true
+        },
+        {
+          "type": "ident",
+          "named": true
+        },
+        {
+          "type": "qmark_immediate",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "line",
     "named": true,
     "fields": {},
@@ -67,6 +90,10 @@
         },
         {
           "type": "ident",
+          "named": true
+        },
+        {
+          "type": "ident_with_suffix",
           "named": true
         },
         {
@@ -176,6 +203,10 @@
     "named": true
   },
   {
+    "type": "bang_immediate",
+    "named": true
+  },
+  {
     "type": "boolean",
     "named": true
   },
@@ -209,6 +240,10 @@
   },
   {
     "type": "number",
+    "named": true
+  },
+  {
+    "type": "qmark_immediate",
     "named": true
   },
   {
