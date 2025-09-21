@@ -32,7 +32,7 @@ import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRe
 import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
 import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resolver'
-import { formatText, sanitizeSeparators } from './format'
+import { formatText, sanitizeSeparators, spacingDiagnostics } from './format'
 import { sanitizeLineSpaces } from './format'
 
 const connection = createConnection(ProposedFeatures.all)
@@ -101,7 +101,14 @@ documents.onDidChangeContent(async change => {
     // Update project index using AST + text
     updateIndexForDoc(uri, parsed, text)
 
-    connection.sendDiagnostics({ uri, diagnostics: finalDiagnostics })
+    // Add style diagnostics (spacing)
+    const style = spacingDiagnostics(text).map(it => ({
+        severity: DiagnosticSeverity.Hint,
+        range: { start: { line: it.line, character: it.start }, end: { line: it.line, character: it.end } },
+        message: it.message,
+        source: 'view.tree:style',
+    }))
+    connection.sendDiagnostics({ uri, diagnostics: [...finalDiagnostics, ...style] })
     {
         const stats = getIndexStats(uri)
         log(`[view.tree] diagnostics: uri=${uri} count=${diagnostics.length} index=classes:${stats.classes} props:${stats.props} occs:${stats.occs}`)

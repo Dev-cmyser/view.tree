@@ -1,21 +1,10 @@
 import $ from 'mol_tree2'
 
-export function formatText(text: string, uri?: string): string {
-  try {
-    const tree = $.$mol_tree2.fromString(text, uri)
-    return tree.toString()
-  } catch (e1) {
-    // Try sanitize separators and trailing LF, then reparse
-    let fixed = sanitizeSeparators(text)
-    if (!/\n$/.test(fixed)) fixed += '\n'
-    try {
-      const tree2 = $.$mol_tree2.fromString(fixed, uri)
-      return tree2.toString()
-    } catch (e2) {
-      // Last resort: return sanitized text
-      return fixed
-    }
-  }
+export function formatText(text: string, _uri?: string): string {
+  // Non-destructive formatter: keep line structure, collapse multiple spaces, normalize newlines, ensure trailing LF
+  const unix = text.replace(/\r\n?/g, '\n')
+  const sanitized = sanitizeSeparators(unix)
+  return sanitized.endsWith('\n') ? sanitized : sanitized + '\n'
 }
 
 export function sanitizeSeparators(text: string): string {
@@ -40,4 +29,22 @@ export function sanitizeLineSpaces(line: string): string {
   const rest = m[2]
   if (rest.startsWith('\\')) return line
   return indent + rest.replace(/ {2,}/g, ' ')
+}
+
+export function spacingDiagnostics(text: string): Array<{ line: number; start: number; end: number; message: string }> {
+  const issues: Array<{ line: number; start: number; end: number; message: string }> = []
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i]
+    const m = /^(\t*)(.*)$/.exec(raw)
+    if (!m) continue
+    const rest = m[2]
+    if (rest.startsWith('\\')) continue
+    const ms = /( {2,})/.exec(rest)
+    if (!ms) continue
+    const start = m[1].length + ms.index
+    const end = start + ms[0].length
+    issues.push({ line: i, start, end, message: 'Multiple spaces — use single space' })
+  }
+  return issues
 }
