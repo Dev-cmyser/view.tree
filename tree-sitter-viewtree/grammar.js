@@ -1,5 +1,5 @@
-// grammar.js — view.tree: тело = нода, рекурсивная вложенность по табам, БЕЗ узла 'suite'.
-// Нужен external scanner ($._newline, $._indent, $._dedent).
+// grammar.js — view.tree: тело = нода, рекурсивная вложенность по табам (без 'suite').
+// Нужен external scanner: $._newline, $._indent, $._dedent.
 
 module.exports = grammar({
 	name: 'viewtree',
@@ -7,8 +7,8 @@ module.exports = grammar({
 	extras: $ => [],
 
 	externals: $ => [
-		$._newline, // \n (включая финальный)
-		$._indent, // шаг вверх по \t
+		$._newline, // LF (включая финальный)
+		$._indent, // шаг вверх по количеству \t
 		$._dedent, // шаг вниз (сериями)
 	],
 
@@ -18,44 +18,34 @@ module.exports = grammar({
 
 		blank: $ => $._newline,
 
-		// Нода: голова + \n + (опц.) вложенные строки (ноды или "сырые" строки)
+		// Нода: head + LF + (опц.) блок детей (ноды или raw_line) между indent/dedent
 		node: $ =>
-			seq(
-				field('head', $.node_path),
-				$._newline,
-				optional(seq($._indent, repeat1(choice($.blank, $.node, $.raw_line)), $._dedent)),
-			),
 
-		// "Сырая" строка-тело (как нода): только raw_string + \n + (опц.) вложенный блок
-		raw_line: $ =>
-			seq(
-				field('raw', $.raw_string),
-				$._newline,
-				optional(seq($._indent, repeat1(choice($.blank, $.node, $.raw_line)), $._dedent)),
-			),
+		// Равный отступ (съедаем \t на строках того же уровня внутри тела)
+		eqindent: _ => token.immediate(/\t+/),
 
-		// Голова ноды: атомы, разделённые РОВНО одним пробелом
-		node_path: $ => seq($.atom, repeat(seq($.sep, $.atom))),
+		// Простая "сырая" строка-ребёнок: только \... + LF (без своей вложенности)
+		raw_line: $ => seq(field('raw', $.raw_string), $._newline),
 
-		sep: _ => token(' '), // ровно один пробел
+		// Голова ноды: первый атом — НЕ raw_string; дальше — любые атомы.
+		node_path: $ => seq($.head_atom, repeat(seq($.sep, $.atom))),
 
-		// Атом
-		atom: $ =>
+		// Ровно один пробел между атомами
+		sep: _ => token(' '),
+
+		// Первый атом в строке
+		head_atom: $ =>
 			choice(
-				$.raw_string,
-
-				// стрелки (порядок важен)
+				// стрелки
 				$.arrow_both,
 				$.arrow_left,
 				$.arrow_right,
-
 				// односимвольные маркеры
-				$.op_dash, // -
-				$.op_slash, // /
-				$.op_star, // *
-				$.op_caret, // ^
-				$.op_at, // @
-
+				$.op_dash,
+				$.op_slash,
+				$.op_star,
+				$.op_caret,
+				$.op_at,
 				// литералы
 				$.boolean,
 				$.null,
@@ -63,12 +53,32 @@ module.exports = grammar({
 				$.lit_pos_infinity,
 				$.lit_neg_infinity,
 				$.number,
-
-				// идентификатор с суффиксами (*key, ?, !, *?)
+				// идентификатор с суффиксами
 				$.ident,
 			),
 
-		// --- маркеры ---
+		// Любой последующий атом (разрешаем raw_string)
+		atom: $ =>
+			choice(
+				$.raw_string,
+				$.arrow_both,
+				$.arrow_left,
+				$.arrow_right,
+				$.op_dash,
+				$.op_slash,
+				$.op_star,
+				$.op_caret,
+				$.op_at,
+				$.boolean,
+				$.null,
+				$.lit_nan,
+				$.lit_pos_infinity,
+				$.lit_neg_infinity,
+				$.number,
+				$.ident,
+			),
+
+		// --- односимвольные ---
 		op_dash: _ => token('-'),
 		op_slash: _ => token('/'),
 		op_star: _ => token('*'),
@@ -77,10 +87,10 @@ module.exports = grammar({
 
 		// --- стрелки ---
 		arrow_both: _ => token('<=>'),
-		arrow_left: _ => token('<='), // после '<=>'
+		arrow_left: _ => token('<='), // объявлять после '<=>'
 		arrow_right: _ => token('=>'),
 
-		// --- сырая строка: '\' + всё до конца строки (LF отдаёт $._newline) ---
+		// --- сырая строка: '\' до конца строки (LF отдаёт $._newline) ---
 		raw_string: _ => token(seq('\\', /[^\n]*/)),
 
 		// --- литералы ---
@@ -96,15 +106,6 @@ module.exports = grammar({
 					choice(seq(/[0-9]+/, optional(seq('.', /[0-9]+/))), seq('.', /[0-9]+/)),
 					optional(seq(/[eE]/, optional(choice('+', '-')), /[0-9]+/)),
 				),
-			),
-
-		// --- идентификатор с суффиксами ---
-		// NAME_CORE := [ $ A-Za-z _ ] [ \w . $ ]*
-		// KEY_TAIL  := [ \w - . : $ ]+
-		// IDENT     := NAME_CORE ( ('*' KEY_TAIL?)? ( '?' | '!' )? )
-		ident: _ =>
-			token(
-				seq(/[\$A-Za-z_][\w\.\$]*/, optional(seq('*', optional(/[\w\-\.\:\$]+/))), optional(choice('?', '!'))),
 			),
 	},
 })

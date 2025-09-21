@@ -57,8 +57,46 @@
                         "name": "blank"
                       },
                       {
-                        "type": "SYMBOL",
-                        "name": "node"
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "eqindent"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "node"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "eqindent"
+                              },
+                              {
+                                "type": "BLANK"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "raw_line"
+                          }
+                        ]
                       }
                     ]
                   }
@@ -76,12 +114,36 @@
         }
       ]
     },
+    "eqindent": {
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "\\t+"
+      }
+    },
+    "raw_line": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "raw",
+          "content": {
+            "type": "SYMBOL",
+            "name": "raw_string"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_newline"
+        }
+      ]
+    },
     "node_path": {
       "type": "SEQ",
       "members": [
         {
           "type": "SYMBOL",
-          "name": "atom"
+          "name": "head_atom"
         },
         {
           "type": "REPEAT",
@@ -107,6 +169,71 @@
         "type": "STRING",
         "value": " "
       }
+    },
+    "head_atom": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "arrow_both"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "arrow_left"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "arrow_right"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "op_dash"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "op_slash"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "op_star"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "op_caret"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "op_at"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "boolean"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "null"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_nan"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_pos_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lit_neg_infinity"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "ident"
+        }
+      ]
     },
     "atom": {
       "type": "CHOICE",
@@ -419,7 +546,7 @@
         "members": [
           {
             "type": "PATTERN",
-            "value": "[\\$A-Za-z_][\\w\\.\\$]*"
+            "value": "[^\\s\\/\\\\<>\\-\\*\\^@=\\?\\!][^\\s\\/\\\\<>\\-\\*\\^@=\\?\\!]*"
           },
           {
             "type": "CHOICE",
