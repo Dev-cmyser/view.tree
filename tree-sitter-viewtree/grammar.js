@@ -26,7 +26,7 @@ module.exports = grammar({
 		// --- Blocks ----------------------------------------------------------
 
 		// A component block is one-or-more indented lines with component statements
-		component_block: $ => repeat1(seq('\n', repeat1('\t'), $.component_line)),
+		component_block: $ => prec.right(repeat1(seq('\n', repeat1('\t'), $.component_line))),
 
 		// Inside component: property statements or comments
 		component_line: $ => choice($.property_stmt, $.comment),
