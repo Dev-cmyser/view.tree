@@ -49,7 +49,13 @@ connection.onInitialize((params: InitializeParams) => {
     workspaceRootFs = rootUri ? uriToFsPath(rootUri) : ''
     return {
     capabilities: {
-		textDocumentSync: TextDocumentSyncKind.Incremental,
+		textDocumentSync: {
+			openClose: true,
+			change: TextDocumentSyncKind.Incremental,
+			willSave: false,
+			willSaveWaitUntil: true,
+			save: { includeText: false },
+		},
 		completionProvider: { triggerCharacters: ['.', ':'] },
 		definitionProvider: true,
 		referencesProvider: true,
@@ -346,6 +352,23 @@ connection.onCodeAction(params => {
         isPreferred: true,
     }
     return [action]
+})
+
+// Format-on-save via WillSaveWaitUntil
+connection.onWillSaveTextDocumentWaitUntil(params => {
+    const uri = params.textDocument.uri
+    const doc = documents.get(uri)
+    if (!doc) return []
+    const original = doc.getText()
+    const formatted = formatText(original, uri)
+    const changed = formatted !== original
+    log(`[willSave] uri=${uri} changed=${changed}`)
+    if (!changed) return []
+    const edit: TextEdit = {
+        range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
+        newText: formatted,
+    }
+    return [edit]
 })
 
 // (Removed) On-type formatting: enforcement happens only on explicit format
