@@ -44,7 +44,7 @@
 		}
 	},
 	"scripts": {
-		"prestart": " tree-sitter build --wasm",
+		"prestart": "tree-sitter generate && tree-sitter build --wasm",
 		"start": "  tree-sitter playground",
 		"tree": "  tree-sitter",
 		"gen": " tree-sitter generate"

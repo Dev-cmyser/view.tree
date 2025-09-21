@@ -1,65 +1,88 @@
-// grammar.js
-// Tree-sitter grammar for $mol view.tree (структурная разметка по строкам, табы и один пробел как в $mol_tree2)
-// Примечание: полноценный INDENT/DEDENT лучше сделать через external scanner;
-// здесь INDENT (массив \t) остаётся в AST для восстановления вложенности.
-
 module.exports = grammar({
 	name: 'viewtree',
-
-	// Не игнорируем пробелы и табы глобально — нам нужна строгая валидация "ровно один пробел"
 	extras: $ => [],
 
-	conflicts: $ => [],
-
 	rules: {
-		// Корень: >=1 строки, каждая ОБЯЗАННО заканчивается \n
-		source_file: $ => repeat1($.line),
+		source_file: $ => repeat1(choice($.line, $.blank_line)),
+		blank_line: $ => seq(optional($.indent), $.newline),
 
-		// Строка: [\t...]? путь из узлов (node (SEP node)*) NEWLINE
 		line: $ => seq(optional($.indent), $.node_path, $.newline),
 
-		// Последовательность узлов в строке, разделённых РОВНО одним пробелом
 		node_path: $ => seq($.node, repeat(seq($.sep, $.node))),
 
-		// Узел: либо сырая строка (\...), либо один из "типов" — идентификатор/стрелки/спец-символы
 		node: $ =>
 			choice(
 				$.raw_string,
+
+				// стрелки
 				$.arrow_both,
 				$.arrow_left,
 				$.arrow_right,
-				$.special_dash,
-				$.special_slash,
-				$.special_star,
-				$.special_caret,
-				$.special_at,
+
+				// спец-узлы/операторы
+				$.special_bang, // !
+				$.special_qmark, // ?
+				$.special_dash, // -
+				$.special_slash, // /
+				$.special_star, // *
+				$.special_caret, // ^
+				$.special_at, // @
+
+				// литералы
+				$.lit_nan,
+				$.lit_pos_infinity,
+				$.lit_neg_infinity,
+				$.boolean,
+				$.null,
+				$.number,
+
+				// идентификатор (без '?'; допускаем суффикс '*')
 				$.ident,
 			),
 
-		// ---- Токены-разделители/структура ----
+		// строго ТОЛЬКО табы
 		indent: _ => token.immediate(/\t+/),
 
-		sep: _ => token(' '), // Ровно один пробел между узлами
-		newline: _ => token('\n'), // Конец строки обязателен
+		sep: _ => token(' '),
+		newline: _ => token('\n'),
 
-		// ---- Стрелки ----
+		// стрелки (порядок важен)
 		arrow_both: _ => token('<=>'),
-		arrow_left: _ => token('<='), // важно объявить после '<=>' чтобы не «съедать» его
+		arrow_left: _ => token('<='), // объявлен после '<=>'
 		arrow_right: _ => token('=>'),
 
-		// ---- Спец-узлы как отдельные типы ----
+		// операторы/спец-узлы
+		special_bang: _ => token('!'),
+		special_qmark: _ => token('?'),
 		special_dash: _ => token('-'),
 		special_slash: _ => token('/'),
 		special_star: _ => token('*'),
 		special_caret: _ => token('^'),
 		special_at: _ => token('@'),
 
-		// ---- Идентификатор ----
-		// Разрешаем FQN/имена с $, точками, цифрами; суффикс * или ? в конце.
-		ident: _ => token(seq(/[\$A-Za-z_][\w\.\$]*/, optional(choice('*', '?')))),
+		// литералы
+		boolean: _ => token(choice('true', 'false')),
+		null: _ => token('null'),
+		lit_nan: _ => token('NaN'),
+		lit_pos_infinity: _ => token('Infinity'),
+		lit_neg_infinity: _ => token('-Infinity'),
 
-		// ---- Сырая строка ----
-		// Начинается с обратной косой и тянется до конца строки (без включения \n)
+		number: _ =>
+			token(
+				// [+-]? ( \d+(\.\d+)? | \.\d+ ) ( [eE][+-]?\d+ )?
+				seq(
+					optional(choice('+', '-')),
+					choice(seq(/[0-9]+/, optional(seq('.', /[0-9]+/))), seq('.', /[0-9]+/)),
+					optional(seq(/[eE]/, optional(choice('+', '-')), /[0-9]+/)),
+				),
+			),
+
+		ident: _ =>
+			token(
+				// имя/FQN с $, точками; суффикс '*' (для мультиплексных свойств)
+				seq(/[\$A-Za-z_][\w\.\$]*/, optional('*')),
+			),
+
 		raw_string: _ => token(seq('\\', /[^\n]*/)),
 	},
 })

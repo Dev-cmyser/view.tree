@@ -1,5 +1,24 @@
 [
   {
+    "type": "blank_line",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "indent",
+          "named": true
+        },
+        {
+          "type": "newline",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "line",
     "named": true,
     "fields": {},
@@ -43,7 +62,31 @@
           "named": true
         },
         {
+          "type": "boolean",
+          "named": true
+        },
+        {
           "type": "ident",
+          "named": true
+        },
+        {
+          "type": "lit_nan",
+          "named": true
+        },
+        {
+          "type": "lit_neg_infinity",
+          "named": true
+        },
+        {
+          "type": "lit_pos_infinity",
+          "named": true
+        },
+        {
+          "type": "null",
+          "named": true
+        },
+        {
+          "type": "number",
           "named": true
         },
         {
@@ -55,11 +98,19 @@
           "named": true
         },
         {
+          "type": "special_bang",
+          "named": true
+        },
+        {
           "type": "special_caret",
           "named": true
         },
         {
           "type": "special_dash",
+          "named": true
+        },
+        {
+          "type": "special_qmark",
           "named": true
         },
         {
@@ -102,6 +153,10 @@
       "required": true,
       "types": [
         {
+          "type": "blank_line",
+          "named": true
+        },
+        {
           "type": "line",
           "named": true
         }
@@ -121,6 +176,10 @@
     "named": true
   },
   {
+    "type": "boolean",
+    "named": true
+  },
+  {
     "type": "ident",
     "named": true
   },
@@ -129,7 +188,27 @@
     "named": true
   },
   {
+    "type": "lit_nan",
+    "named": true
+  },
+  {
+    "type": "lit_neg_infinity",
+    "named": true
+  },
+  {
+    "type": "lit_pos_infinity",
+    "named": true
+  },
+  {
     "type": "newline",
+    "named": true
+  },
+  {
+    "type": "null",
+    "named": true
+  },
+  {
+    "type": "number",
     "named": true
   },
   {
@@ -145,11 +224,19 @@
     "named": true
   },
   {
+    "type": "special_bang",
+    "named": true
+  },
+  {
     "type": "special_caret",
     "named": true
   },
   {
     "type": "special_dash",
+    "named": true
+  },
+  {
+    "type": "special_qmark",
     "named": true
   },
   {
