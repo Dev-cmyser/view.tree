@@ -26,6 +26,8 @@ module.exports = grammar({
 		$.comment,
 	],
 
+	conflicts: $ => [[$.node]],
+
 	rules: {
 		// ========== ОСНОВНАЯ СТРУКТУРА ==========
 
@@ -40,12 +42,12 @@ module.exports = grammar({
 				field('name', $.component_name),
 				field('base', $.component_name),
 				$._newline,
-				optional(seq($._indent, $.property_list)),
+				optional($.property_list),
 			),
 
 		component_name: _ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
 
-		property_list: $ => seq(repeat1(choice($.blank, $.comment_line, $.node, $.raw_line)), $._dedent),
+		property_list: $ => seq($._indent, repeat1(choice($.blank, $.comment_line, $.node, $.raw_line)), $._dedent),
 
 		// Комментарий: "- " + текст до конца строки
 		comment_line: $ => prec(PREC.comment_node, seq('-', $.comment_text, $._newline)),
@@ -61,8 +63,7 @@ module.exports = grammar({
 
 		// ========== УЗЛЫ (СВОЙСТВА) ==========
 
-		node: $ =>
-			prec(PREC.node, seq(field('path', $.node_path), $._newline, optional(seq($._indent, $.property_list)))),
+		node: $ => prec(PREC.node, seq(field('path', $.node_path), $._newline, optional($.property_list))),
 
 		raw_line: $ => prec(PREC.raw_line, seq(field('raw', $.raw_string), $._newline)),
 
