@@ -1,0 +1,5 @@
+$test $mol_view
+	sub /
+		<= A $mol_view
+			title \Hello
+		<= B $mol_view

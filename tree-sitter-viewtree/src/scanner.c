@@ -8,6 +8,7 @@ enum TokenType {
   INDENT,
   DEDENT,
   EQINDENT,
+  COMMENT,
 };
 
 typedef struct {

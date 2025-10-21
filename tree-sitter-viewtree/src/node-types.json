@@ -95,6 +95,10 @@
       "required": true,
       "types": [
         {
+          "type": "node_path",
+          "named": true
+        },
+        {
           "type": "path_element",
           "named": true
         }

@@ -17,7 +17,14 @@ module.exports = grammar({
 
 	extras: $ => [$.comment, /[ \t]/],
 
-	externals: $ => [$._newline, $._indent, $._dedent, $._eqindent],
+	externals: $ => [
+		$._newline,
+		$._indent,
+		$._dedent,
+		$._eqindent,
+		// Add comment to externals so scanner is always invoked
+		$.comment,
+	],
 
 	rules: {
 		// ========== ОСНОВНАЯ СТРУКТУРА ==========
@@ -33,24 +40,12 @@ module.exports = grammar({
 				field('name', $.component_name),
 				field('base', $.component_name),
 				$._newline,
-				optional($.property_list),
+				optional(seq($._indent, $.property_list)),
 			),
 
 		component_name: _ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
 
-		property_list: $ =>
-			seq(
-				$._indent,
-				repeat1(
-					choice(
-						$.blank,
-						seq(optional($._eqindent), $.comment_line),
-						seq(optional($._eqindent), $.node),
-						seq(optional($._eqindent), $.raw_line),
-					),
-				),
-				$._dedent,
-			),
+		property_list: $ => seq(repeat1(choice($.blank, $.comment_line, $.node, $.raw_line)), $._dedent),
 
 		// Комментарий: "- " + текст до конца строки
 		comment_line: $ => prec(PREC.comment_node, seq('-', $.comment_text, $._newline)),
@@ -66,11 +61,12 @@ module.exports = grammar({
 
 		// ========== УЗЛЫ (СВОЙСТВА) ==========
 
-		node: $ => prec(PREC.node, seq(field('path', $.node_path), $._newline, optional($.property_list))),
+		node: $ =>
+			prec(PREC.node, seq(field('path', $.node_path), $._newline, optional(seq($._indent, $.property_list)))),
 
 		raw_line: $ => prec(PREC.raw_line, seq(field('raw', $.raw_string), $._newline)),
 
-		node_path: $ => seq($.path_element, repeat(seq(' ', $.path_element))),
+		node_path: $ => seq($.path_element, optional(seq(' ', $.node_path))),
 
 		// ========== ЭЛЕМЕНТЫ ПУТИ ==========
 
