@@ -10,19 +10,15 @@
     "fields": {}
   },
   {
-    "type": "comment_node",
+    "type": "comment_line",
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
-      "required": false,
+      "multiple": false,
+      "required": true,
       "types": [
         {
-          "type": "inline_value",
-          "named": true
-        },
-        {
-          "type": "property_list",
+          "type": "comment_text",
           "named": true
         }
       ]
@@ -59,36 +55,6 @@
       "types": [
         {
           "type": "property_list",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "inline_value",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "value",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "localized_string",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "raw_string",
           "named": true
         }
       ]
@@ -134,11 +100,6 @@
         }
       ]
     }
-  },
-  {
-    "type": "op_at",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "op_dash",
@@ -238,7 +199,7 @@
           "named": true
         },
         {
-          "type": "comment_node",
+          "type": "comment_line",
           "named": true
         },
         {
@@ -313,45 +274,6 @@
     }
   },
   {
-    "type": "value",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "boolean",
-          "named": true
-        },
-        {
-          "type": "component_name",
-          "named": true
-        },
-        {
-          "type": "localized_string",
-          "named": true
-        },
-        {
-          "type": "null",
-          "named": true
-        },
-        {
-          "type": "number",
-          "named": true
-        },
-        {
-          "type": "raw_string",
-          "named": true
-        },
-        {
-          "type": "special_number",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": " ",
     "named": false
   },
@@ -361,10 +283,6 @@
   },
   {
     "type": "/",
-    "named": false
-  },
-  {
-    "type": "@",
     "named": false
   },
   {
@@ -393,6 +311,10 @@
     "extra": true
   },
   {
+    "type": "comment_text",
+    "named": true
+  },
+  {
     "type": "component_name",
     "named": true
   },
@@ -406,6 +328,10 @@
   },
   {
     "type": "number",
+    "named": true
+  },
+  {
+    "type": "op_at",
     "named": true
   },
   {

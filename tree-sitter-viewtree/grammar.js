@@ -19,8 +19,6 @@ module.exports = grammar({
 
 	externals: $ => [$._newline, $._indent, $._dedent, $._eqindent],
 
-	conflicts: $ => [[$.special_number]],
-
 	rules: {
 		// ========== ОСНОВНАЯ СТРУКТУРА ==========
 
@@ -31,14 +29,11 @@ module.exports = grammar({
 		// ========== КОМПОНЕНТЫ ==========
 
 		component: $ =>
-			prec(
-				PREC.component,
-				seq(
-					field('name', $.component_name),
-					field('base', $.component_name),
-					$._newline,
-					optional($.property_list),
-				),
+			seq(
+				field('name', $.component_name),
+				field('base', $.component_name),
+				$._newline,
+				optional($.property_list),
 			),
 
 		component_name: _ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
@@ -49,7 +44,7 @@ module.exports = grammar({
 				repeat1(
 					choice(
 						$.blank,
-						seq(optional($._eqindent), $.comment_node),
+						seq(optional($._eqindent), $.comment_line),
 						seq(optional($._eqindent), $.node),
 						seq(optional($._eqindent), $.raw_line),
 					),
@@ -57,11 +52,10 @@ module.exports = grammar({
 				$._dedent,
 			),
 
-		comment_node: $ =>
-			prec.dynamic(
-				10,
-				prec.right(PREC.comment_node, seq('-', optional($.inline_value), optional($.property_list))),
-			),
+		// Комментарий: "- " + текст до конца строки
+		comment_line: $ => prec(PREC.comment_node, seq('-', $.comment_text, $._newline)),
+
+		comment_text: _ => token(seq(' ', /.*/)),
 
 		inline_value: $ => prec.right(repeat1($.value)),
 
@@ -147,10 +141,20 @@ module.exports = grammar({
 
 		property_identifier: _ => {
 			const base = /[a-zA-Z_][a-zA-Z0-9_]*/
-			const suffix = choice('?', '!', '*')
+			const suffix = /[?!*]+/ // Один или несколько суффиксов: ?, !, *
 			const param = /[a-zA-Z0-9_]+/
 
-			return token(seq(base, optional(choice(suffix, seq(suffix, param)))))
+			return token(
+				seq(
+					base,
+					optional(
+						choice(
+							suffix, // prop?, prop*, prop*?, prop?*, prop!?, и т.д.
+							seq(suffix, param), // prop?name, prop*key, и т.д.
+						),
+					),
+				),
+			)
 		},
 
 		// ========== КОММЕНТАРИИ ==========
