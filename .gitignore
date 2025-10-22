@@ -38,4 +38,4 @@ dist/
 *.zip
 
 zed*
-tree-sitter*
+tree*

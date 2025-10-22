@@ -1,13 +1,28 @@
 {
-	"name": "view-tree",
+	"name": "view-tree-lsp",
 	"displayName": "view.tree LSP",
-	"description": "Experimental Tree-sitter grammar and LSP for view.tree",
+	"description": "Language Server Protocol implementation for view.tree format",
 	"version": "0.1.0",
-	"private": true,
-	"main": "./out/vscode/extension.js",
-	"engines": {
-		"vscode": "^1.76.0"
+	"license": "MIT",
+	"author": "Dev-cmyser",
+	"homepage": "https://github.com/Dev-cmyser/view.tree#readme",
+	"bugs": {
+		"url": "https://github.com/Dev-cmyser/view.tree/issues"
 	},
+	"main": "./out/vscode/extension.js",
+	"bin": {
+		"view-tree-lsp": "bin/view-tree-lsp"
+	},
+	"engines": {
+		"vscode": "^1.76.0",
+		"node": ">=18.0.0"
+	},
+	"os": [
+		"darwin",
+		"linux",
+		"win32",
+		"win"
+	],
 	"activationEvents": [
 		"onLanguage:view.tree"
 	],
@@ -37,11 +52,21 @@
 		"start-server": "node --watch  out/server/index.js --stdio",
 		"watch-server": " tsc -w -p ts-config.json"
 	},
+	"keywords": [
+		"view.tree",
+		"tree",
+		"mol",
+		"lsp",
+		"language-server",
+		"language-server-protocol"
+	],
 	"dependencies": {
 		"mol_tree2": "^1.0.1231",
-		"vscode-languageclient": "^9.0.1",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12"
+	},
+	"optionalDependencies": {
+		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",
@@ -53,6 +78,13 @@
 		"Programming Languages"
 	],
 	"repository": {
-		"url": "https://github.com/Dev-cmyser/view.tree"
-	}
+		"type": "git",
+		"url": "git+https://github.com/Dev-cmyser/view.tree.git"
+	},
+	"files": [
+		"bin/",
+		"out/server/",
+		"README.md",
+		"LICENSE"
+	]
 }
