@@ -1,2 +1,4 @@
 #!/usr/bin/env node
-require('../out/server/index.js');
+const path = require('path')
+const serverPath = path.join(__dirname, '..', 'out', 'server', 'index.js')
+require(serverPath)
