@@ -22,8 +22,6 @@ export function sanitizeSeparators(text: string): string {
 		fixed = fixed.replace(/(?:<\s+=\s*>|<\s*=\s+>)/g, '<=>')
 		fixed = fixed.replace(/<\s+=/g, '<=')
 		fixed = fixed.replace(/=\s+>/g, '=>')
-		// disallow raw string after operator usage (invalid), drop trailing raw token
-		fixed = fixed.replace(/((?:<=>|<=|=>)\s+\S+)\s+\\.*$/, '$1')
 		fixed = fixed.replace(/ {2,}/g, ' ')
 		lines[i] = indent + fixed
 	}
@@ -76,19 +74,6 @@ export function spacingDiagnostics(text: string): Array<{ line: number; start: n
 				const end = start + m2[0].length
 				issues.push({ line: i, start, end, message: msg })
 			}
-		}
-		// Raw string after operator usage (invalid) — только для => и <=>
-		const rawAfterOp = /((?:<=>|=>)\s+\S+)\s+\\.*$/
-		const bad = rawAfterOp.exec(rest)
-		if (bad) {
-			const start = indent.length + bad.index + bad[1].length
-			const end = indent.length + rest.length
-			issues.push({
-				line: i,
-				start,
-				end,
-				message: 'Raw string not allowed after => or <=>; remove trailing raw data',
-			})
 		}
 		const ms = /( {2,})/g
 		let m3: RegExpExecArray | null
