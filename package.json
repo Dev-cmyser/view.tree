@@ -37,7 +37,7 @@
 		"watch-server": " tsc -w -p ts-config.json"
 	},
 	"dependencies": {
-		"mol_tree2": "^1.0.1196",
+		"mol_tree2": "latest",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12"
 	},
