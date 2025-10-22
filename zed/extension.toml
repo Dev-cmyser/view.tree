@@ -10,9 +10,6 @@ repository = "https://github.com/Dev-cmyser/view.tree"
 repository = "https://github.com/Dev-cmyser/tree-sitter-viewtree.git"
 rev = "master"
 
-[language_servers.view-tree-lsp]
+[language_servers.view-tree]
 name = "View.Tree LSP"
 languages = ["ViewTree ($mol)"]
-
-[language_servers.view-tree-lsp.language_ids]
-"ViewTree ($mol)" = "view.tree"

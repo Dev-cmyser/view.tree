@@ -13,18 +13,28 @@ impl zed::Extension for ViewTreeExtension {
         _language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
-        // Resolve node from PATH (require Node to be installed)
+        // Zero-config: require Node in PATH, run bundled server from zed/lsp-server/out/server/index.js
         let node = worktree.which("node").unwrap_or_else(|| "node".to_string());
 
-        // Server entry: ../out/server/index.js relative to the extension root (zed/)
         let cwd =
             std::env::current_dir().map_err(|e| format!("Cannot get current directory: {}", e))?;
-        let server_js = cwd.join("..").join("out").join("server").join("index.js");
+        let server_js = cwd
+            .join("lsp-server")
+            .join("out")
+            .join("server")
+            .join("index.js");
+        if !server_js.exists() {
+            return Err(format!(
+                "Bundled LSP server not found at {}",
+                server_js.display()
+            ));
+        }
         let server_js_str = server_js.to_string_lossy().to_string();
 
         eprintln!(
-            "view.tree LSP (Zed): node={} script={} --stdio",
-            node, server_js_str
+            "view.tree LSP (Zed): {} {:?}",
+            node,
+            vec![server_js_str.clone(), "--stdio".to_string()]
         );
 
         Ok(zed::Command {
