@@ -50,6 +50,7 @@ const deps_1 = require("./deps");
 const resolver_1 = require("./resolver");
 const format_1 = require("./format");
 const scan_1 = require("./scan");
+const tsProps_1 = require("./tsProps");
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 const trees = new Map();
@@ -130,6 +131,14 @@ documents.onDidChangeContent(async (change) => {
     }
     // Update project index using AST + text
     (0, indexer_1.updateIndexForDoc)(uri, parsed, text);
+    // Enrich index with TS class method properties for .ts files in real-time
+    try {
+        if (/\.ts$/.test(uri) && !/\.d\.ts$/.test(uri)) {
+            const tsProps = (0, tsProps_1.extractTsProps)(text);
+            (0, indexer_1.updateTsPropsForUri)(uri, tsProps);
+        }
+    }
+    catch { }
     // Add style diagnostics (spacing)
     const style = (0, format_1.spacingDiagnostics)(text).map(it => ({
         severity: node_1.DiagnosticSeverity.Hint,
@@ -198,17 +207,12 @@ connection.onHover(async (params) => {
     const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : '';
     let defs = [...(0, indexer_1.findClassDefs)(token), ...(0, indexer_1.findPropDefs)(token)];
     log(`[hover] start token=${token} defs=${defs.length}`);
-    // If class-like symbol, show top-level props from its class AST with nested keys inline
+    // If class-like symbol, prefer merged properties from index (view.tree + ts)
     let propsBlock = '';
     if ((0, resolver_1.classLike)(token)) {
-        let targetTree;
-        const target = defs[0];
-        const targetUri = target?.uri;
-        if (targetUri) {
-            targetTree = trees.get(targetUri);
-            log(`[hover] targetUri=${targetUri} cached=${!!targetTree}`);
-        }
-        if (!targetTree && workspaceRootFs) {
+        let props = (0, indexer_1.getComponentProps)(token);
+        if (!props.length && workspaceRootFs) {
+            // Lazy-load expected class file to populate index if not yet loaded
             try {
                 const rel = (0, resolver_1.classNameToRelPath)(token);
                 const fsPath = require('path').join(workspaceRootFs, rel);
@@ -218,75 +222,13 @@ connection.onHover(async (params) => {
                 const tree2 = mol_tree2_1.default.$mol_tree2.fromString(text2, uri2);
                 trees.set(uri2, tree2);
                 (0, indexer_1.updateIndexForDoc)(uri2, tree2, text2);
-                defs = [...(0, indexer_1.findClassDefs)(token), ...(0, indexer_1.findPropDefs)(token)];
-                targetTree = tree2;
-                log(`[hover] lazy-load ok uri=${uri2} defsNow=${defs.length}`);
+                props = (0, indexer_1.getComponentProps)(token);
+                log(`[hover] lazy-load ok uri=${uri2} propsNow=${props.length}`);
             }
             catch { }
         }
-        if (targetTree) {
-            // Find the class node in AST (DFS), then list its direct lowercase-key children
-            const stack = [targetTree];
-            let classNode = null;
-            while (stack.length) {
-                const cur = stack.pop();
-                if (cur) {
-                    const curType = String(cur.type || '');
-                    const normCur = curType.replace(/^\$/, '');
-                    const normTok = token.replace(/^\$/, '');
-                    if (curType === token || normCur === normTok) {
-                        classNode = cur;
-                        break;
-                    }
-                }
-                const kids = (cur && cur.kids) || [];
-                for (let i = kids.length - 1; i >= 0; --i)
-                    stack.push(kids[i]);
-            }
-            log(`[hover] classNodeFound=${!!classNode}`);
-            const nodeToUse = classNode || targetTree;
-            const lines = [];
-            const childTypes = (nodeToUse.kids || []).map((k) => String(k.type || ''));
-            log(`[hover] childTypes=${childTypes.join(',')}`);
-            for (const kid of nodeToUse.kids || []) {
-                const t = String(kid.type || '');
-                if (/^[a-z][\w]*$/.test(t)) {
-                    // Group suffix if present (e.g., *any)
-                    let suffix = '';
-                    const first = kid.kids && kid.kids[0];
-                    if (first && first.type === '*') {
-                        const dv = first.kids && first.kids[0];
-                        const grp = dv && String(dv.type || '') === '' && dv.value ? String(dv.value) : '';
-                        suffix = grp ? ` *${grp}` : ' *';
-                    }
-                    // Collect nested prop keys (skip first '*' node)
-                    const sub = [];
-                    const startIdx = first && first.type === '*' ? 1 : 0;
-                    const kids2 = kid.kids || [];
-                    for (let i = startIdx; i < kids2.length; ++i) {
-                        const tt = String(kids2[i].type || '');
-                        if (/^[a-z][\w?]*\??$/.test(tt))
-                            sub.push(tt);
-                    }
-                    if (sub.length)
-                        lines.push(`${t}${suffix}: ${sub.join(', ')}`);
-                    else
-                        lines.push(`${t}${suffix}`);
-                }
-            }
-            if (!lines.length) {
-                // Fallback: scan one level deeper
-                for (const child of nodeToUse.kids || []) {
-                    for (const g of child.kids || []) {
-                        const tt = String(g.type || '');
-                        if (/^[a-z][\w]*$/.test(tt))
-                            lines.push(tt);
-                    }
-                }
-            }
-            log(`[hover] propsCount=${lines.length}`);
-            if (lines.length)
-                propsBlock = lines.map(l => `- ${l}`).join('\n');
+        if (props.length) {
+            propsBlock = props.map(p => `- ${p}`).join('\n');
         }
     }
     const contents = propsBlock || token;
@@ -295,7 +237,7 @@ connection.onHover(async (params) => {
     log(`[view.tree] hover: uri=${uri} token=${token} defs=${defs.length} hasProps=${contents !== `view.tree: ${header}${value}`}`);
     return hover;
 });
-connection.onDefinition(params => {
+connection.onDefinition(async (params) => {
     const uri = params.textDocument.uri;
     const doc = documents.get(uri);
     const root = trees.get(uri);
@@ -309,6 +251,58 @@ connection.onDefinition(params => {
         log(`[view.tree] definition: no-token`);
         return null;
     }
+    // Heuristics: detect root class token and current class name from the first line
+    const fullText = doc.getText().replace(/\r\n?/g, '\n');
+    const lines = fullText.split('\n');
+    const firstToken = lines[0]
+        ?.replace(/^\uFEFF/, '')
+        .trim()
+        .split(/\s+/)[0] || '';
+    const className = firstToken ? (firstToken.startsWith('$') ? firstToken : '$' + firstToken) : '';
+    const isRootClassToken = params.position.line === 0 && token === firstToken;
+    async function toFsLocation(fsPath, line, colStart = 0, len = 0) {
+        const uri2 = (0, resolver_1.fsPathToUri)(fsPath);
+        return {
+            uri: uri2,
+            range: { start: { line, character: colStart }, end: { line, character: colStart + Math.max(0, len) } },
+        };
+    }
+    // Root class on line 0 -> jump to corresponding .ts class
+    if (isRootClassToken && workspaceRootFs) {
+        const tsFs = (0, resolver_1.uriToFsPath)(uri).replace(/\.view\.tree$/, '.ts');
+        try {
+            const tsText = await fs.readFile(tsFs, 'utf8');
+            const tsLines = tsText.split('\n');
+            const re = new RegExp(`\\bexport\\s+class\\s+${className.replace(/\$/g, '\\$')}`);
+            const idx = tsLines.findIndex(l => re.test(l));
+            if (idx >= 0) {
+                const lineText = tsLines[idx];
+                const col = Math.max(0, lineText.indexOf(className.replace(/\$/g, '$')));
+                return await toFsLocation(tsFs, idx, col, className.length);
+            }
+        }
+        catch { }
+        return await toFsLocation(tsFs, 0, 0, 0);
+    }
+    // Property token -> try to open method inside related .ts class file
+    if (/^[a-z][\w]*$/.test(token) && className) {
+        const tsFs = (0, resolver_1.uriToFsPath)(uri).replace(/\.view\.tree$/, '.ts');
+        try {
+            const tsText = await fs.readFile(tsFs, 'utf8');
+            const tsLines = tsText.split('\n');
+            // naive method search; keeps server generic (no VSCode API)
+            const mRe = new RegExp(`\\b${token}\\s*\\(`);
+            for (let i = 0; i < tsLines.length; i++) {
+                const lineText = tsLines[i];
+                if (mRe.test(lineText)) {
+                    const col = Math.max(0, lineText.indexOf(token));
+                    return await toFsLocation(tsFs, i, col, token.length);
+                }
+            }
+        }
+        catch { }
+    }
+    // Default behavior: use indexed locations from .view.tree project
     let classHits = (0, indexer_1.findClassDefs)(token);
     const propHits = (0, indexer_1.findPropDefs)(token);
     const locs = [];

@@ -54,7 +54,7 @@ function buildSemanticTokens(doc, root) {
         return [];
     const raw = [];
     collect(root, raw);
-    raw.sort((a, b) => (a.line - b.line) || (a.char - b.char));
+    raw.sort((a, b) => a.line - b.line || a.char - b.char);
     let prevLine = 0;
     let prevChar = 0;
     const data = [];

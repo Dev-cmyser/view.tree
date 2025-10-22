@@ -42,6 +42,8 @@ const path = __importStar(require("path"));
 const mol_tree2_1 = __importDefault(require("mol_tree2"));
 const format_1 = require("./format");
 const resolver_1 = require("./resolver");
+const tsProps_1 = require("./tsProps");
+const indexer_1 = require("./indexer");
 async function* walk(dir, ignore) {
     let entries = [];
     try {
@@ -57,8 +59,13 @@ async function* walk(dir, ignore) {
         if (e.isDirectory()) {
             yield* walk(p, ignore);
         }
-        else if (e.isFile() && p.endsWith('.view.tree')) {
-            yield p;
+        else if (e.isFile()) {
+            if (p.endsWith('.view.tree')) {
+                yield p;
+            }
+            else if (p.endsWith('.ts') && !p.endsWith('.d.ts')) {
+                yield p;
+            }
         }
     }
 }
@@ -69,24 +76,33 @@ async function scanProject(workspaceRootFs, trees, updateIndexForDoc, log) {
         try {
             const text0 = await fs.readFile(file, 'utf8');
             const uri = (0, resolver_1.fsPathToUri)(file);
-            let tree;
-            try {
-                tree = mol_tree2_1.default.$mol_tree2.fromString(text0, uri);
+            if (file.endsWith('.view.tree')) {
+                let tree;
+                try {
+                    tree = mol_tree2_1.default.$mol_tree2.fromString(text0, uri);
+                }
+                catch (e) {
+                    const msg = String(e?.reason || e?.message || '');
+                    let text = text0;
+                    if (/Wrong nodes separator/.test(msg))
+                        text = (0, format_1.sanitizeSeparators)(text);
+                    if (!/\n$/.test(text))
+                        text += '\n';
+                    tree = mol_tree2_1.default.$mol_tree2.fromString(text, uri);
+                }
+                trees.set(uri, tree);
+                updateIndexForDoc(uri, tree, undefined);
+                count++;
+                if (count % 50 === 0)
+                    log?.(`[scan] indexed files=${count}`);
             }
-            catch (e) {
-                const msg = String(e?.reason || e?.message || '');
-                let text = text0;
-                if (/Wrong nodes separator/.test(msg))
-                    text = (0, format_1.sanitizeSeparators)(text);
-                if (!/\n$/.test(text))
-                    text += '\n';
-                tree = mol_tree2_1.default.$mol_tree2.fromString(text, uri);
+            else if (file.endsWith('.ts') && !file.endsWith('.d.ts')) {
+                // Extract TS-based component properties and store to TS index
+                const compMap = (0, tsProps_1.extractTsProps)(text0);
+                if (compMap.size) {
+                    (0, indexer_1.updateTsPropsForUri)(uri, compMap);
+                }
             }
-            trees.set(uri, tree);
-            updateIndexForDoc(uri, tree, undefined);
-            count++;
-            if (count % 50 === 0)
-                log?.(`[scan] indexed files=${count}`);
         }
         catch { }
     }

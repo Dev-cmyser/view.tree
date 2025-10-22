@@ -20,7 +20,8 @@ function parseWithDiagnostics(text, uri) {
             const length = Math.max(1, Number(span.length ?? 1));
             return {
                 tree: null,
-                diagnostics: [{
+                diagnostics: [
+                    {
                         severity: node_1.DiagnosticSeverity.Error,
                         range: {
                             start: { line, character },
@@ -28,17 +29,20 @@ function parseWithDiagnostics(text, uri) {
                         },
                         message,
                         source: 'mol_tree2',
-                    }],
+                    },
+                ],
             };
         }
         return {
             tree: null,
-            diagnostics: [{
+            diagnostics: [
+                {
                     severity: node_1.DiagnosticSeverity.Error,
                     range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
                     message,
                     source: 'mol_tree2',
-                }],
+                },
+            ],
         };
     }
 }

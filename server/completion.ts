@@ -24,13 +24,6 @@ export function getCompletions(doc: TextDocument, position: Position, _root: Ast
 
 	const classes = getAllClasses().map(label => ({ label, kind: CompletionItemKind.Class }))
 
-	// If current token starts with '$' => suggest classes
-	const slice = text.slice(Math.max(0, offset - 128), offset)
-	const tokenMatch = /([A-Za-z0-9_$]+)$/.exec(slice)
-	if (tokenMatch && tokenMatch[1].startsWith('$')) {
-		return [...classes, ...operators]
-	}
-
 	// Determine current component context
 	const binding = findBinding(lineText)
 	let currentComponent: string | null = null
@@ -42,6 +35,13 @@ export function getCompletions(doc: TextDocument, position: Position, _root: Ast
 		}
 	} else {
 		currentComponent = getNearestComponentAbove(lines, lineIndex)
+	}
+
+	// If current token starts with '$' and we are NOT in property context => suggest classes
+	const slice = text.slice(Math.max(0, offset - 128), offset)
+	const tokenMatch = /([A-Za-z0-9_$]+)$/.exec(slice)
+	if (!currentComponent && tokenMatch && tokenMatch[1].startsWith('$')) {
+		return [...classes, ...operators]
 	}
 
 	const baseProps: CompletionItem[] = [
@@ -57,7 +57,7 @@ export function getCompletions(doc: TextDocument, position: Position, _root: Ast
 			label,
 			kind: CompletionItemKind.Property,
 		}))
-		return [...propItems, ...baseProps, ...operators, ...classes]
+		return [...propItems, ...baseProps, ...operators]
 	}
 
 	// Default suggestions
