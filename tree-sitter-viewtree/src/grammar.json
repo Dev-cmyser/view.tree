@@ -378,7 +378,8 @@
     },
     "identifier": {
       "type": "PATTERN",
-      "value": "[a-zA-Z_][a-zA-Z0-9_]*"
+      "value": "[\\p{L}\\p{Emoji}_][\\p{L}\\p{Emoji}\\p{N}_]*",
+      "flags": "u"
     },
     "number": {
       "type": "CHOICE",

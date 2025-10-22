@@ -82,8 +82,8 @@ module.exports = grammar({
 		// Модификатор свойства
 		property_modifier: $ => choice('?', '!', '*'),
 
-		// Идентификатор
-		identifier: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
+		// Идентификатор (поддерживает Unicode символы включая эмодзи)
+		identifier: $ => /[\p{L}\p{Emoji}_][\p{L}\p{Emoji}\p{N}_]*/u,
 
 		// Числа
 		number: $ => choice(/[+-]?\d+\.\d+/, /[+-]?\d+/, 'NaN', 'Infinity', '-Infinity'),
