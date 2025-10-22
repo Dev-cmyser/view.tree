@@ -1,161 +1,98 @@
-/**
- * @file view.tree grammar for tree-sitter
- * @author Generated for $mol framework
- * @license MIT
- * @see {@link https://github.com/hyoo-ru/$mol/tree/master/view.tree|view.tree documentation}
- */
-
-const PREC = {
-	component: 3,
-	raw_line: 2,
-	comment_node: 2,
-	node: 1,
-}
-
 module.exports = grammar({
 	name: 'viewtree',
 
-	extras: $ => [$.comment, /[ \t]/],
+	externals: $ => [$._indent, $._dedent, $._newline],
 
-	externals: $ => [
-		$._newline,
-		$._indent,
-		$._dedent,
-		$._eqindent,
-		// Add comment to externals so scanner is always invoked
-		$.comment,
-	],
-
-	conflicts: $ => [[$.node]],
+	conflicts: $ => [[$.property_name, $.node_content], [$.property_node]],
 
 	rules: {
-		// ========== ОСНОВНАЯ СТРУКТУРА ==========
+		// Корневая структура файла
+		source_file: $ => repeat($._definition),
 
-		source_file: $ => repeat(choice($.blank, $.component)),
+		// Определение - это только компонент
+		_definition: $ => $.component_declaration,
 
-		blank: $ => $._newline,
+		// Объявление компонента: $name $base
+		component_declaration: $ =>
+			seq(field('name', $.component_name), field('base', $.component_type), optional($.node_body)),
 
-		// ========== КОМПОНЕНТЫ ==========
+		// Имя компонента начинается с $
+		component_name: $ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
 
-		component: $ =>
-			seq(
-				field('name', $.component_name),
-				field('base', $.component_name),
-				$._newline,
-				optional($.property_list),
+		// Тип компонента тоже начинается с $
+		component_type: $ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
+
+		// Тело ноды - это блок вложенных нод с отступом
+		node_body: $ => seq($._newline, $._indent, repeat1($.node), $._dedent),
+
+		// Нода - это либо комментарий, либо обычное свойство
+		node: $ => seq(choice($.comment_node, $.property_node), $._newline),
+
+		// Комментарий начинается с - и идет до конца строки
+		comment_node: $ => prec.left(seq('-', optional(/[^\n\r]*/), optional($.node_body))),
+
+		// Обычная нода свойства
+		property_node: $ => seq(field('key', $.property_name), optional($.node_content), optional($.node_body)),
+
+		// Имя свойства может быть с разными модификаторами
+		property_name: $ =>
+			prec.left(
+				choice(
+					// С стрелкой: <= Name (экземпляр компонента)
+					seq('<=', $.identifier),
+					// Двунаправленное: value? <=> name?
+					seq($.identifier, '?', '<=>', $.identifier, '?'),
+					// Однонаправленное слева: value <= name
+					seq($.identifier, '<=', $.identifier),
+					// Однонаправленное справа: value => name
+					seq($.identifier, '=>', $.identifier),
+					// С параметром: value?val
+					seq($.identifier, '?', $.identifier),
+					// Мутабельное: value?
+					seq($.identifier, '?'),
+					// Мульти-свойство: Wall*
+					seq($.identifier, '*'),
+					// Простой идентификатор: title
+					$.identifier,
+				),
 			),
 
-		component_name: _ => /\$[a-zA-Z_][a-zA-Z0-9_]*/,
-
-		property_list: $ => seq($._indent, repeat1(choice($.blank, $.comment_line, $.node, $.raw_line)), $._dedent),
-
-		// Комментарий: "- " + текст до конца строки
-		comment_line: $ => prec(PREC.comment_node, seq('-', $.comment_text, $._newline)),
-
-		comment_text: _ => token(seq(' ', /.*/)),
-
-		inline_value: $ => prec.right(repeat1($.value)),
-
-		value: $ =>
-			choice($.raw_string, $.localized_string, $.number, $.boolean, $.null, $.special_number, $.component_name),
-
-		localized_string: $ => seq('@', $.raw_string),
-
-		// ========== УЗЛЫ (СВОЙСТВА) ==========
-
-		node: $ => prec(PREC.node, seq(field('path', $.node_path), $._newline, optional($.property_list))),
-
-		raw_line: $ => prec(PREC.raw_line, seq(field('raw', $.raw_string), $._newline)),
-
-		node_path: $ => seq($.path_element, optional(seq(' ', $.node_path))),
-
-		// ========== ЭЛЕМЕНТЫ ПУТИ ==========
-
-		path_element: $ =>
+		// Содержимое ноды - значение на той же строке
+		node_content: $ =>
 			choice(
-				// Операторы (должны быть раньше для приоритета)
-				$.arrow_both,
-				$.arrow_left,
-				$.arrow_right,
-				$.op_dash,
-				$.op_at,
-				$.op_caret,
-
-				// Специальные конструкции для списков и словарей
-				$.typed_list,
-				$.op_slash,
-				$.op_star,
-
-				// Литералы
-				$.raw_string,
-				$.boolean,
-				$.null,
-				$.special_number,
-				$.number,
-
-				// Идентификаторы (последними для правильного приоритета)
-				$.component_name,
-				$.property_identifier,
+				$.component_type, // $mol_view
+				$.string_value, // \text
+				$.localized_string, // @ \text
+				$.list_marker, // /
+				$.dict_marker, // *
+				$.number, // 123
+				$.boolean, // true/false
+				$.null_value, // null
+				$.identifier, // простое значение
 			),
 
-		// ========== ОПЕРАТОРЫ ==========
+		// Простой идентификатор
+		identifier: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
 
-		arrow_both: _ => '<=>',
-		arrow_left: _ => '<=',
-		arrow_right: _ => '=>',
-		op_dash: _ => '-',
-		op_slash: _ => '/',
-		op_star: _ => '*',
-		op_caret: _ => '^',
-		op_at: _ => '@',
+		// Строковое значение начинается с \
+		string_value: $ => seq('\\', optional(/[^\n\r]*/)),
 
-		// ========== ТИПИЗИРОВАННЫЕ СПИСКИ ==========
+		// Локализованная строка начинается с @
+		localized_string: $ => seq('@', $.string_value),
 
-		typed_list: $ => seq('/', choice($.component_name, $.type_name)),
+		// Маркер списка
+		list_marker: $ => seq('/', optional(choice($.component_type, /string|number|boolean/))),
 
-		type_name: _ => /string|number|boolean/,
+		// Маркер словаря
+		dict_marker: $ => '*',
 
-		// ========== ЛИТЕРАЛЫ ==========
+		// Число
+		number: $ => /-?[0-9]+(\.[0-9]+)?/,
 
-		raw_string: _ => token(seq('\\', /[^\n]*/)),
+		// Булево значение
+		boolean: $ => choice('true', 'false'),
 
-		boolean: _ => choice('true', 'false'),
-
-		null: _ => 'null',
-
-		special_number: _ => choice('NaN', 'Infinity', seq('-', 'Infinity')),
-
-		number: _ =>
-			token(
-				seq(
-					optional(choice('+', '-')),
-					choice(seq(/[0-9]+/, '.', optional(/[0-9]+/)), seq('.', /[0-9]+/), /[0-9]+/),
-					optional(seq(/[eE]/, optional(choice('+', '-')), /[0-9]+/)),
-				),
-			),
-
-		// ========== ИДЕНТИФИКАТОРЫ ==========
-
-		property_identifier: _ => {
-			const base = /[a-zA-Z_][a-zA-Z0-9_]*/
-			const suffix = /[?!*]+/ // Один или несколько суффиксов: ?, !, *
-			const param = /[a-zA-Z0-9_]+/
-
-			return token(
-				seq(
-					base,
-					optional(
-						choice(
-							suffix, // prop?, prop*, prop*?, prop?*, prop!?, и т.д.
-							seq(suffix, param), // prop?name, prop*key, и т.д.
-						),
-					),
-				),
-			)
-		},
-
-		// ========== КОММЕНТАРИИ ==========
-
-		comment: _ => token(seq('#', /.*/)),
+		// Null
+		null_value: $ => 'null',
 	},
 })

@@ -28,6 +28,7 @@
 		"*.wasm"
 	],
 	"dependencies": {
+		"mol_tree2": "^1.0.1230",
 		"node-addon-api": "^8.2.1",
 		"node-gyp-build": "^4.8.2"
 	},
@@ -47,6 +48,7 @@
 		"prestart": "tree-sitter generate && tree-sitter build --wasm",
 		"start": "  tree-sitter playground",
 		"tree": "  tree-sitter",
-		"gen": " tree-sitter generate"
+		"gen": " tree-sitter generate",
+		"js": "node test.js"
 	}
 }

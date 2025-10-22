@@ -1,4 +1,0 @@
-$test $mol_view
-	sub /
-		<= A $mol_view
-		<= B $mol_view

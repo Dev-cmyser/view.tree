@@ -1,0 +1,4 @@
+$mol_app_demo_detail $mol_page
+	description \
+	tools /
+		<= Readme $mol_check_icon
