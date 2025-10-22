@@ -1,9 +1,5 @@
 const $ = require('mol_tree2')
 
-function $mol_fail_new(error) {
-	throw error
-}
-
 const keywords = new Set([
 	'',
 	'.byte',
@@ -21,7 +17,7 @@ function $mol_tree2_grammar_check(grammar) {
 		check: {
 			if (keywords.has(node.type)) break check
 			if (grammar.select(node.type).kids.length) break check
-			$mol_fail_new(node.error(`Wrong pattern name`))
+			$.$mol_fail(node.error(`Wrong pattern name`))
 		}
 
 		for (const kid of node.kids) {
@@ -47,6 +43,6 @@ let i = $.$mol_tree2_from_string(
 `,
 )
 console.log('check tree:')
-console.log($mol_tree2_grammar_check(i))
+console.log($.$mol_tree2_grammar_check(i))
 console.log('\nJSON representation:')
 console.log(JSON.stringify(i))
