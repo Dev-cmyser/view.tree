@@ -1,8 +1,8 @@
 {
 	"name": "view-tree-lsp",
-	"displayName": "view.tree LSP",
+	"displayName": "view.tree LSP $mol",
 	"description": "Language Server Protocol implementation for view.tree format",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"license": "MIT",
 	"author": "Dev-cmyser",
 	"homepage": "https://github.com/Dev-cmyser/view.tree#readme",
