@@ -1,95 +1,44 @@
+; Highlights for view.tree syntax
 
-;; queries/highlights.scm — view_tree (robust)
+; Component names (starting with $)
+(component_name) @type
 
-;; базовые разделители/отступы
-(newline) @punctuation.delimiter
-(indent)  @punctuation.whitespace
+; Binding operators
+(binding_operator) @operator
 
-;; ===== классы/свойства =====
+; Comments - recursively apply to all commented content
+(commented_line) @comment
+(comment_marker) @comment
+(comment_content) @comment
+(commented_child_line) @comment
 
-;; top-level объявление: первые два узла — классы (между ними стоит sep, его не матчим)
-(component_decl
-  (node_path_component
-    (_) @type))
+; Typed collections
+(typed_list) @type.builtin
+(typed_dict) @type.builtin
 
-;; свойства: первый узел в property_line
-(indented_line
-  (property_line
-    (_) @property))
+; List marker
+(list_marker) @punctuation.bracket
 
-;; стрелочная строка: после стрелки — свойство
-(indented_line
-  (arrow_property_line
-    (arrow_left)  @operator
-    (_)           @property))
-(indented_line
-  (arrow_property_line
-    (arrow_right) @operator
-    (_)           @property))
-(indented_line
-  (arrow_property_line
-    (arrow_both)  @operator
-    (_)           @property))
+; Dictionary markers
+(dict_marker) @punctuation.bracket
 
-;; опциональный класс после свойства в стрелочной строке: ..., <prop> <maybe sep> <class>
-(indented_line
-  (arrow_property_line
-    (_)
-    (_)?   ; опц. пробел/узел между
-    (_) @type))
+; Localized strings (unified token)
+(localized_string) @string.special
 
-;; $-классы как builtins (по лексеме)
-((_) @type.builtin
-  (#match? @type.builtin "^\\$"))
+; String literals
+(string_literal) @string
 
-;; мультиплексные имена со звёздой на конце (по лексеме)
-((_) @property.special
-  (#match? @property.special ".*\\*$"))
+; Numbers
+(number) @number
 
-;; суффиксы ?/! у свойств (из ident_with_suffix, если есть)
-(ident_with_suffix (qmark_immediate) @operator)
-(ident_with_suffix (bang_immediate)  @operator)
+; Booleans
+(boolean) @boolean
 
-;; ===== операторы/спец =====
-(arrow_left)  @operator
-(arrow_right) @operator
-(arrow_both)  @operator
-(node (arrow_left))  @operator
-(node (arrow_right)) @operator
-(node (arrow_both))  @operator
+; Null
+(null) @constant.builtin
 
-(node (special_slash)) @operator   ; /
-(node (special_star))  @operator   ; *
-(node (special_caret)) @operator   ; ^
-(node (special_at))    @operator   ; @
-(node (special_qmark)) @operator   ; ?
-(node (special_bang))  @operator   ; !
+; Property modifiers (separate tokens)
+(property_modifier) @punctuation.special
 
-;; ===== литералы =====
-(node (boolean))          @boolean
-(node (null))             @constant.builtin
-(node (lit_nan))          @constant.builtin
-(node (lit_pos_infinity)) @constant.builtin
-(node (lit_neg_infinity)) @constant.builtin
-(node (number))           @number
-
-;; ===== строки =====
-(node (raw_string)) @string
-
-;; локализуемые строки: ... @ \text (без явного sep)
-(indented_line
-  (property_line
-    (_)
-   (node (raw_string) @string.special)))
-
-;; ===== комментарии =====
-(top_comment_line
-  (node_path_top_comment
-    ))
-(top_comment_line
-  (node_path_top_comment
-    (node) @comment))
-
-(indented_line
-  (indented_comment_line
-    (node) @comment))
+; Plain identifiers (properties, variables)
+(identifier) @variable
