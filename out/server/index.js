@@ -207,12 +207,12 @@ connection.onHover(async (params) => {
     const value = node?.value ? ` = ${JSON.stringify(String(node.value))}` : '';
     let defs = [...(0, indexer_1.findClassDefs)(token), ...(0, indexer_1.findPropDefs)(token)];
     log(`[hover] start token=${token} defs=${defs.length}`);
-    // If class-like symbol, prefer merged properties from index (view.tree + ts)
+    // If class-like symbol, list direct child property keys from its view.tree AST
     let propsBlock = '';
     if ((0, resolver_1.classLike)(token)) {
-        let props = (0, indexer_1.getComponentProps)(token);
-        if (!props.length && workspaceRootFs) {
-            // Lazy-load expected class file to populate index if not yet loaded
+        // Prefer properties strictly from .view.tree
+        let props = (0, indexer_1.getComponentPropsFromViewTree)(token);
+        if ((!props || props.length === 0) && workspaceRootFs) {
             try {
                 const rel = (0, resolver_1.classNameToRelPath)(token);
                 const fsPath = require('path').join(workspaceRootFs, rel);
@@ -222,13 +222,50 @@ connection.onHover(async (params) => {
                 const tree2 = mol_tree2_1.default.$mol_tree2.fromString(text2, uri2);
                 trees.set(uri2, tree2);
                 (0, indexer_1.updateIndexForDoc)(uri2, tree2, text2);
-                props = (0, indexer_1.getComponentProps)(token);
+                props = (0, indexer_1.getComponentPropsFromViewTree)(token);
                 log(`[hover] lazy-load ok uri=${uri2} propsNow=${props.length}`);
             }
             catch { }
         }
-        if (props.length) {
+        if (props && props.length) {
             propsBlock = props.map(p => `- ${p}`).join('\n');
+        }
+        else {
+            // Fallback: traverse current view.tree AST to collect direct prop-like children
+            let targetTree = null;
+            const target = defs[0];
+            const targetUri = target?.uri;
+            if (targetUri) {
+                targetTree = trees.get(targetUri);
+            }
+            if (targetTree) {
+                const stack = [targetTree];
+                let classNode = null;
+                while (stack.length) {
+                    const cur = stack.pop();
+                    if (cur) {
+                        const curType = String(cur.type || '');
+                        const normCur = curType.replace(/^\$/, '');
+                        const normTok = token.replace(/^\$/, '');
+                        if (curType === token || normCur === normTok) {
+                            classNode = cur;
+                            break;
+                        }
+                    }
+                    const kids = (cur && cur.kids) || [];
+                    for (let i = kids.length - 1; i >= 0; --i)
+                        stack.push(kids[i]);
+                }
+                const lines = [];
+                const isPropName = (s) => /^[A-Za-z][\w]*\??$/.test(s);
+                for (const kid of classNode?.kids || []) {
+                    const t = String(kid?.type || '');
+                    if (isPropName(t))
+                        lines.push(t);
+                }
+                if (lines.length)
+                    propsBlock = lines.map(l => `- ${l}`).join('\n');
+            }
         }
     }
     const contents = propsBlock || token;

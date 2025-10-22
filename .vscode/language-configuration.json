@@ -1,0 +1,30 @@
+{
+  "indentationRules": {
+    "increaseIndentPattern": "^(?:[\\t ]*\\$[A-Za-z_][\\w]*(?:\\s+\\$[A-Za-z_][\\w]*)*\\s*$|[\\t ]*.*\\/\\s*$|[\\t ]*(?:[A-Za-z_][\\w]*\\??\\s+)?(?:<=>|<=|=>)\\s+.*\\$[A-Za-z_][\\w]*\\s*$)",
+    "decreaseIndentPattern": "a^"
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^[\\t ]*\\$[A-Za-z_][\\w]*(?:\\s+\\$[A-Za-z_][\\w]*)*\\s*$",
+      "action": { "indentAction": "Indent" }
+    },
+    {
+      "beforeText": "^[\\t ]*.*\\/\\s*$",
+      "action": { "indentAction": "Indent" }
+    },
+    {
+      "beforeText": "^[\\t ]*(?:[A-Za-z_][\\w]*\\??\\s+)?(?:<=>|<=|=>)\\s+.*\\$[A-Za-z_][\\w]*\\s*$",
+      "action": { "indentAction": "Indent" }
+    }
+  ],
+  "autoClosingPairs": [
+    { "open": "\"", "close": "\"" },
+    { "open": "'", "close": "'" },
+    { "open": "`", "close": "`" }
+  ],
+  "surroundingPairs": [
+    { "open": "\"", "close": "\"" },
+    { "open": "'", "close": "'" },
+    { "open": "`", "close": "`" }
+  ]
+}

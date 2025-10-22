@@ -25,8 +25,8 @@ function classify(node: any): string | null {
 
 	if (t) {
 		if (/^(\/|\*|\^|=|<=|<=>)$/.test(t)) return 'operator'
-		if (/^\$?[A-Z]/.test(t)) return 'class'
-		if (/^[a-z]/.test(t)) return 'property'
+		if (/^\$[A-Za-z]/.test(t)) return 'class'
+		if (/^[A-Za-z]/.test(t)) return 'property'
 		return null
 	}
 

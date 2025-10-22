@@ -1,7 +1,7 @@
 import { classLike } from './resolver'
 
 type Spot = { line: number; col: number; length: number }
-type Ast = any
+import type { Ast } from './ast/build'
 const classDefsByUri = new Map<string, Map<string, Spot>>()
 const propDefsByUri = new Map<string, Map<string, Spot[]>>()
 const occByUri = new Map<string, Map<string, Spot[]>>()
@@ -34,6 +34,15 @@ export function updateIndexForDoc(uri: string, root: Ast | null | undefined, tex
 		if (rec) rec.properties.add(propName)
 	}
 
+	const keywordProps = new Set(['true', 'false', 'null', 'nan', 'infinity'])
+
+	function isPropName(name: string): boolean {
+		// Allow leading letter (upper or lower), underscores/digits inside, optional trailing '?'
+		if (!/^[A-Za-z][\w]*\??$/.test(name)) return false
+		const base = name.endsWith('?') ? name.slice(0, -1) : name
+		return !keywordProps.has(base.toLowerCase())
+	}
+
 	function walk(node: Ast, currentClass?: string) {
 		if (!node || !node.span) return
 		const span = node.span
@@ -45,17 +54,48 @@ export function updateIndexForDoc(uri: string, root: Ast | null | undefined, tex
 			const spot: Spot = { line: row, col, length: name.length }
 			addOcc(name, spot)
 
-			if (classLike(name) && col === 0) {
-				// Top-level class-like: record class def and switch context
+			if (classLike(name) && col <= 0) {
+				// Top-level class-like: record class def
 				classDefs.set(name, spot)
 				ensureComp(name, spot)
+
+				// Recursively collect properties within the class subtree:
+				// - skip $-prefixed nodes (classes/components)
+				// - skip operators (/ * ^ = <= <=> @ \)
+				// - skip keywords (true/false/null/NaN/Infinity)
+				const opSet = new Set<string>(['/', '*', '^', '=', '<=', '<=>', '@', '\\'])
 				const kids: Ast[] = (node.kids || []) as any
-				for (const k of kids) walk(k, name)
+				const pushProp = (kt: string, kspanLike: any) => {
+					const kspan = kspanLike || { row, col: col + 1, length: kt.length }
+					const kspot: Spot = {
+						line: Math.max(0, Number(kspan.row || 1) - 1),
+						col: Math.max(0, Number(kspan.col || 1) - 1),
+						length: kt.length,
+					}
+					const arr = propDefs.get(kt) ?? []
+					arr.push(kspot)
+					propDefs.set(kt, arr)
+					addPropToComp(name, kt)
+					addOcc(kt, kspot)
+				}
+				const collectProps = (n: Ast) => {
+					if (!n) return
+					const t = String(n.type ?? '')
+					if (t && !t.startsWith('$') && isPropName(t) && !opSet.has(t)) {
+						pushProp(t, n.span)
+					}
+					const sub: Ast[] = (n.kids || []) as any
+					for (const c of sub) collectProps(c)
+				}
+				for (const kid of kids) collectProps(kid)
+
+				// Continue walking deeper for occurrences, but don't attribute nested tokens as props twice
+				for (const kid of kids) walk(kid, undefined)
 				return
 			}
 
 			// Property token: record prop definition and map to current class (if any)
-			if (/^[a-z][\w]*$/.test(name)) {
+			if (currentClass && isPropName(name)) {
 				const arr = propDefs.get(name) ?? []
 				arr.push(spot)
 				propDefs.set(name, arr)
@@ -170,6 +210,15 @@ export function getComponentProps(name: string): string[] {
 	for (const [, map] of tsCompPropsByUri.entries()) {
 		const props = map.get(name)
 		if (props) for (const p of props) out.add(p)
+	}
+	return [...out].sort()
+}
+
+export function getComponentPropsFromViewTree(name: string): string[] {
+	const out = new Set<string>()
+	for (const [, map] of compPropsByUri.entries()) {
+		const rec = map.get(name)
+		if (rec) for (const p of rec.properties) out.add(p)
 	}
 	return [...out].sort()
 }

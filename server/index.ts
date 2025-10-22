@@ -37,6 +37,7 @@ import {
 	findRefs,
 	getIndexStats,
 	getComponentProps,
+	getComponentPropsFromViewTree,
 	updateTsPropsForUri,
 } from './indexer'
 import { buildSemanticTokens } from './semanticTokens'
@@ -211,12 +212,12 @@ connection.onHover(async params => {
 	let defs = [...findClassDefs(token), ...findPropDefs(token)]
 	log(`[hover] start token=${token} defs=${defs.length}`)
 
-	// If class-like symbol, prefer merged properties from index (view.tree + ts)
+	// If class-like symbol, list direct child property keys from its view.tree AST
 	let propsBlock = ''
 	if (classLike(token)) {
-		let props = getComponentProps(token)
-		if (!props.length && workspaceRootFs) {
-			// Lazy-load expected class file to populate index if not yet loaded
+		// Prefer properties strictly from .view.tree
+		let props = getComponentPropsFromViewTree(token)
+		if ((!props || props.length === 0) && workspaceRootFs) {
 			try {
 				const rel = classNameToRelPath(token)
 				const fsPath = require('path').join(workspaceRootFs, rel)
@@ -226,12 +227,45 @@ connection.onHover(async params => {
 				const tree2 = $.$mol_tree2.fromString(text2, uri2)
 				trees.set(uri2, tree2)
 				updateIndexForDoc(uri2, tree2, text2)
-				props = getComponentProps(token)
+				props = getComponentPropsFromViewTree(token)
 				log(`[hover] lazy-load ok uri=${uri2} propsNow=${props.length}`)
 			} catch {}
 		}
-		if (props.length) {
+		if (props && props.length) {
 			propsBlock = props.map(p => `- ${p}`).join('\n')
+		} else {
+			// Fallback: traverse current view.tree AST to collect direct prop-like children
+			let targetTree: any | null = null
+			const target = defs[0]
+			const targetUri = target?.uri
+			if (targetUri) {
+				targetTree = trees.get(targetUri) as any
+			}
+			if (targetTree) {
+				const stack: any[] = [targetTree]
+				let classNode: any | null = null
+				while (stack.length) {
+					const cur = stack.pop()
+					if (cur) {
+						const curType = String(cur.type || '')
+						const normCur = curType.replace(/^\$/, '')
+						const normTok = token.replace(/^\$/, '')
+						if (curType === token || normCur === normTok) {
+							classNode = cur
+							break
+						}
+					}
+					const kids = (cur && cur.kids) || []
+					for (let i = kids.length - 1; i >= 0; --i) stack.push(kids[i])
+				}
+				const lines: string[] = []
+				const isPropName = (s: string) => /^[A-Za-z][\w]*\??$/.test(s)
+				for (const kid of classNode?.kids || []) {
+					const t = String(kid?.type || '')
+					if (isPropName(t)) lines.push(t)
+				}
+				if (lines.length) propsBlock = lines.map(l => `- ${l}`).join('\n')
+			}
 		}
 	}
 

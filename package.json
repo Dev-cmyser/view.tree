@@ -20,7 +20,8 @@
 				],
 				"extensions": [
 					".view.tree"
-				]
+				],
+				"configuration": "./.vscode/language-configuration.json"
 			}
 		],
 		"grammars": [
