@@ -1,0 +1,6 @@
+grammars
+target
+lsp-view.tree
+*.wasm
+
+*.mod
