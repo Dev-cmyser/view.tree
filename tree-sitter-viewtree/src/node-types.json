@@ -281,7 +281,7 @@
       "required": true,
       "types": [
         {
-          "type": "component_name",
+          "type": "identifier",
           "named": true
         }
       ]

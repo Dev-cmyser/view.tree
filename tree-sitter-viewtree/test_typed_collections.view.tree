@@ -1,7 +1,0 @@
-$test $mol_page
-	actors /$hyoo_game_actor
-		<= Guy $hyoo_game_actor
-			Realm <= Realm
-	items *$hyoo_game_item
-		<= Item $hyoo_game_item
-			name \test

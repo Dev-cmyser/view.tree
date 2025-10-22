@@ -9,7 +9,10 @@
 			"file-types": ["view.tree"],
 			"injection-regex": "^viewtree$",
 			"class-name": "TreeSitterViewtree",
-			"highlights": "../highlights/TreeSitter/highlights.scm"
+			"highlights": "../highlights/TreeSitter/highlights.scm",
+			"injections": "../highlights/TreeSitter/injections.scm",
+			"locals": "../highlights/TreeSitter/locals.scm",
+			"tags": "../highlights/TreeSitter/tags.scm"
 		}
 	],
 	"metadata": {

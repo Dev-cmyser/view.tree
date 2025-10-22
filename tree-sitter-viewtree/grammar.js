@@ -59,7 +59,7 @@ module.exports = grammar({
 		comment_marker: $ => '-',
 
 		// Типизированный список - /Type
-		typed_list: $ => seq('/', $.component_name),
+		typed_list: $ => seq('/', $.identifier),
 
 		// Типизированный словарь - *Type или ^Type
 		typed_dict: $ => seq(choice('*', '^'), $.component_name),
