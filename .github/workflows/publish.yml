@@ -7,6 +7,7 @@ name: Deploy Extension and NPM Package
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ыв
     steps:
       - uses: actions/checkout@v4
       
