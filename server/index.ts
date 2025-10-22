@@ -36,6 +36,7 @@ import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resol
 import { formatText, sanitizeSeparators, spacingDiagnostics } from './format'
 import { scanProject } from './scan'
 import { sanitizeLineSpaces } from './format'
+import { extractTsProps } from './tsProps'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -119,6 +120,29 @@ documents.onDidChangeContent(async change => {
 
 	// Update project index using AST + text
 	updateIndexForDoc(uri, parsed, text)
+	// Enrich index with TS class method properties for .ts files in real-time
+	try {
+		if (/\.ts$/.test(uri) && !/\.d\.ts$/.test(uri)) {
+			const tsProps = extractTsProps(text)
+			if (tsProps && tsProps.size) {
+				const syn = (function buildSyntheticAstFromTsProps(map: Map<string, Set<string>>): any {
+					const kids: any[] = []
+					let row = 1
+					for (const [cls, props] of map) {
+						const classNode: any = { type: cls, span: { row, col: 1, length: cls.length }, kids: [] }
+						row++
+						for (const p of props) {
+							classNode.kids.push({ type: p, span: { row, col: 2, length: p.length }, kids: [] })
+							row++
+						}
+						kids.push(classNode)
+					}
+					return { type: '', span: { row: 1, col: 1, length: 1 }, kids }
+				})(tsProps)
+				updateIndexForDoc(uri, syn, text)
+			}
+		}
+	} catch {}
 
 	// Add style diagnostics (spacing)
 	const style = spacingDiagnostics(text).map(it => ({
@@ -289,7 +313,7 @@ connection.onHover(async params => {
 	return hover
 })
 
-connection.onDefinition(params => {
+connection.onDefinition(async params => {
 	const uri = params.textDocument.uri
 	const doc = documents.get(uri)
 	const root = trees.get(uri)
@@ -303,6 +327,61 @@ connection.onDefinition(params => {
 		return null
 	}
 
+	// Heuristics: detect root class token and current class name from the first line
+	const fullText = doc.getText().replace(/\r\n?/g, '\n')
+	const lines = fullText.split('\n')
+	const firstToken =
+		lines[0]
+			?.replace(/^\uFEFF/, '')
+			.trim()
+			.split(/\s+/)[0] || ''
+	const className = firstToken ? (firstToken.startsWith('$') ? firstToken : '$' + firstToken) : ''
+	const isRootClassToken = params.position.line === 0 && token === firstToken
+
+	async function toFsLocation(fsPath: string, line: number, colStart = 0, len = 0): Promise<Location> {
+		const uri2 = fsPathToUri(fsPath)
+		return {
+			uri: uri2,
+			range: { start: { line, character: colStart }, end: { line, character: colStart + Math.max(0, len) } },
+		}
+	}
+
+	// Root class on line 0 -> jump to corresponding .ts class
+	if (isRootClassToken && workspaceRootFs) {
+		const tsFs = uriToFsPath(uri).replace(/\.view\.tree$/, '.ts')
+		try {
+			const tsText = await fs.readFile(tsFs, 'utf8')
+			const tsLines = tsText.split('\n')
+			const re = new RegExp(`\\bexport\\s+class\\s+${className.replace(/\$/g, '\\$')}`)
+			const idx = tsLines.findIndex(l => re.test(l))
+			if (idx >= 0) {
+				const lineText = tsLines[idx]
+				const col = Math.max(0, lineText.indexOf(className.replace(/\$/g, '$')))
+				return await toFsLocation(tsFs, idx, col, className.length)
+			}
+		} catch {}
+		return await toFsLocation(tsFs, 0, 0, 0)
+	}
+
+	// Property token -> try to open method inside related .ts class file
+	if (/^[a-z][\w]*$/.test(token) && className) {
+		const tsFs = uriToFsPath(uri).replace(/\.view\.tree$/, '.ts')
+		try {
+			const tsText = await fs.readFile(tsFs, 'utf8')
+			const tsLines = tsText.split('\n')
+			// naive method search; keeps server generic (no VSCode API)
+			const mRe = new RegExp(`\\b${token}\\s*\\(`)
+			for (let i = 0; i < tsLines.length; i++) {
+				const lineText = tsLines[i]
+				if (mRe.test(lineText)) {
+					const col = Math.max(0, lineText.indexOf(token))
+					return await toFsLocation(tsFs, i, col, token.length)
+				}
+			}
+		} catch {}
+	}
+
+	// Default behavior: use indexed locations from .view.tree project
 	let classHits = findClassDefs(token)
 	const propHits = findPropDefs(token)
 
