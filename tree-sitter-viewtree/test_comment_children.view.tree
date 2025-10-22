@@ -1,0 +1,6 @@
+$test $mol_page
+	Square $mol_3d_shape_square
+	- Image* $mol_3d_image
+		uri <= image_uri* \
+	walls /$mol_3d_object
+	avatars /$mol_3d_object

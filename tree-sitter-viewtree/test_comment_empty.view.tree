@@ -1,0 +1,5 @@
+$test $mol_page
+	-
+	Square $mol_3d_shape_square
+	Image* $mol_3d_image
+	walls /$mol_3d_object

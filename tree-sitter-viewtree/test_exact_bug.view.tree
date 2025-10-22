@@ -1,0 +1,23 @@
+	plugins /
+		<= Control $mol_keyboard_state
+			key *
+				W? <=> move_forward?
+				A? <=> move_left?
+				S? <=> move_backward?
+				D? <=> move_right?
+				Q? <=> turn_left?
+				E? <=> turn_right?
+				up? <=> move_forward?
+				left? <=> turn_left?
+				down? <=> move_backward?
+				right? <=> turn_right?
+				pageUp? <=> move_left?
+				pageDown? <=> move_right?
+	-
+	Square $mol_3d_shape_square
+	Image* $mol_3d_image
+		uri <= image_uri* \
+	walls /$mol_3d_object
+	avatars /$mol_3d_object
+	Wall* $mol_3d_object
+		shape <= Square

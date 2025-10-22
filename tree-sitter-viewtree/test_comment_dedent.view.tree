@@ -1,0 +1,8 @@
+$test $mol_page
+	plugins /
+		<= Control $mol_keyboard_state
+			key *
+				W? <=> move_forward?
+				pageDown? <=> move_right?
+	-
+	Square $mol_3d_shape_square

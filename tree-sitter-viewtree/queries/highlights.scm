@@ -6,8 +6,15 @@
 ; Binding operators
 (binding_operator) @operator
 
-; Comment marker
+; Comments - recursively apply to all commented content
+(commented_line) @comment
 (comment_marker) @comment
+(comment_content) @comment
+(commented_child_line) @comment
+
+; Typed collections
+(typed_list) @type.builtin
+(typed_dict) @type.builtin
 
 ; List marker
 (list_marker) @punctuation.bracket
@@ -15,8 +22,8 @@
 ; Dictionary markers
 (dict_marker) @punctuation.bracket
 
-; Localization marker
-(localization_marker) @keyword
+; Localized strings (unified token)
+(localized_string) @string.special
 
 ; String literals
 (string_literal) @string
@@ -30,9 +37,8 @@
 ; Null
 (null) @constant.builtin
 
-; Identifiers (properties, variables)
-(identifier) @variable
+; Property modifiers (separate tokens)
+(property_modifier) @punctuation.special
 
-; Special highlighting for property modifiers
-(identifier) @variable.parameter
-  (#match? @variable.parameter ".*[?!*]$")
+; Plain identifiers (properties, variables)
+(identifier) @variable

@@ -1,0 +1,11 @@
+$test_component $mol_page
+	title \Test
+	- This is a comment
+		nested_prop \value
+		deeper_prop \value2
+	normal_prop \value
+	optional_prop? \value
+	required_prop! \value
+	parameterized_prop* \value
+	@ \Localized string
+	another_prop \value
