@@ -62,11 +62,9 @@
 	],
 	"dependencies": {
 		"mol_tree2": "^1.0.1231",
+		"vscode-languageclient": "^9.0.1",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12"
-	},
-	"optionalDependencies": {
-		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",
