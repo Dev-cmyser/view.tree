@@ -40,4 +40,4 @@ dist/
 zed*
 tree*
 
-node-modules
+node_modules
