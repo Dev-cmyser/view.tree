@@ -5,33 +5,9 @@ import { sanitizeSeparators } from './format'
 import { fsPathToUri } from './resolver'
 import { extractTsProps } from './tsProps'
 
-type Ast = any
+import { updateTsPropsForUri } from './indexer'
 
-function buildSyntheticAstFromTsProps(map: Map<string, Set<string>>): Ast {
-	// Create a minimal AST that indexer can consume:
-	// - top-level children are class-like nodes (type="$Name"), col=1 to be treated as top-level
-	// - their children are property nodes (type="prop"), also with spans
-	const kids: any[] = []
-	let row = 1
-	for (const [cls, props] of map) {
-		const classNode: any = {
-			type: cls,
-			span: { row, col: 1, length: cls.length },
-			kids: [] as any[],
-		}
-		row++
-		for (const p of props) {
-			classNode.kids.push({
-				type: p,
-				span: { row, col: 2, length: p.length },
-				kids: [],
-			})
-			row++
-		}
-		kids.push(classNode)
-	}
-	return { type: '', span: { row: 1, col: 1, length: 1 }, kids }
-}
+import type { Ast } from './ast/build'
 
 async function* walk(dir: string, ignore: Set<string>): AsyncGenerator<string> {
 	let entries: any[] = []
@@ -83,11 +59,10 @@ export async function scanProject(
 				count++
 				if (count % 50 === 0) log?.(`[scan] indexed files=${count}`)
 			} else if (file.endsWith('.ts') && !file.endsWith('.d.ts')) {
-				// Extract TS-based component properties and feed a synthetic AST into the indexer
+				// Extract TS-based component properties and store to TS index
 				const compMap = extractTsProps(text0)
 				if (compMap.size) {
-					const syn = buildSyntheticAstFromTsProps(compMap)
-					updateIndexForDoc(uri, syn, text0)
+					updateTsPropsForUri(uri, compMap)
 				}
 			}
 		} catch {}

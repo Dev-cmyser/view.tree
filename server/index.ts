@@ -29,7 +29,16 @@ import type { Ast } from './ast/build'
 import { findNodeAtOffset } from './ast/findNode'
 import { spanToRange } from './loc'
 import { getCompletions } from './completion'
-import { updateIndexForDoc, removeFromIndex, findClassDefs, findPropDefs, findRefs, getIndexStats } from './indexer'
+import {
+	updateIndexForDoc,
+	removeFromIndex,
+	findClassDefs,
+	findPropDefs,
+	findRefs,
+	getIndexStats,
+	getComponentProps,
+	updateTsPropsForUri,
+} from './indexer'
 import { buildSemanticTokens } from './semanticTokens'
 import { extractClassRefs, loadDependencies } from './deps'
 import { uriToFsPath, classLike, classNameToRelPath, fsPathToUri } from './resolver'
@@ -124,23 +133,7 @@ documents.onDidChangeContent(async change => {
 	try {
 		if (/\.ts$/.test(uri) && !/\.d\.ts$/.test(uri)) {
 			const tsProps = extractTsProps(text)
-			if (tsProps && tsProps.size) {
-				const syn = (function buildSyntheticAstFromTsProps(map: Map<string, Set<string>>): any {
-					const kids: any[] = []
-					let row = 1
-					for (const [cls, props] of map) {
-						const classNode: any = { type: cls, span: { row, col: 1, length: cls.length }, kids: [] }
-						row++
-						for (const p of props) {
-							classNode.kids.push({ type: p, span: { row, col: 2, length: p.length }, kids: [] })
-							row++
-						}
-						kids.push(classNode)
-					}
-					return { type: '', span: { row: 1, col: 1, length: 1 }, kids }
-				})(tsProps)
-				updateIndexForDoc(uri, syn, text)
-			}
+			updateTsPropsForUri(uri, tsProps)
 		}
 	} catch {}
 
@@ -218,17 +211,12 @@ connection.onHover(async params => {
 	let defs = [...findClassDefs(token), ...findPropDefs(token)]
 	log(`[hover] start token=${token} defs=${defs.length}`)
 
-	// If class-like symbol, show top-level props from its class AST with nested keys inline
+	// If class-like symbol, prefer merged properties from index (view.tree + ts)
 	let propsBlock = ''
 	if (classLike(token)) {
-		let targetTree: any
-		const target = defs[0]
-		const targetUri = target?.uri
-		if (targetUri) {
-			targetTree = trees.get(targetUri)
-			log(`[hover] targetUri=${targetUri} cached=${!!targetTree}`)
-		}
-		if (!targetTree && workspaceRootFs) {
+		let props = getComponentProps(token)
+		if (!props.length && workspaceRootFs) {
+			// Lazy-load expected class file to populate index if not yet loaded
 			try {
 				const rel = classNameToRelPath(token)
 				const fsPath = require('path').join(workspaceRootFs, rel)
@@ -238,68 +226,12 @@ connection.onHover(async params => {
 				const tree2 = $.$mol_tree2.fromString(text2, uri2)
 				trees.set(uri2, tree2)
 				updateIndexForDoc(uri2, tree2, text2)
-				defs = [...findClassDefs(token), ...findPropDefs(token)]
-				targetTree = tree2
-				log(`[hover] lazy-load ok uri=${uri2} defsNow=${defs.length}`)
+				props = getComponentProps(token)
+				log(`[hover] lazy-load ok uri=${uri2} propsNow=${props.length}`)
 			} catch {}
 		}
-		if (targetTree) {
-			// Find the class node in AST (DFS), then list its direct lowercase-key children
-			const stack: any[] = [targetTree]
-			let classNode: any | null = null
-			while (stack.length) {
-				const cur = stack.pop()
-				if (cur) {
-					const curType = String(cur.type || '')
-					const normCur = curType.replace(/^\$/, '')
-					const normTok = token.replace(/^\$/, '')
-					if (curType === token || normCur === normTok) {
-						classNode = cur
-						break
-					}
-				}
-				const kids = (cur && cur.kids) || []
-				for (let i = kids.length - 1; i >= 0; --i) stack.push(kids[i])
-			}
-			log(`[hover] classNodeFound=${!!classNode}`)
-			const nodeToUse: any = classNode || targetTree
-			const lines: string[] = []
-			const childTypes = (nodeToUse.kids || []).map((k: any) => String(k.type || ''))
-			log(`[hover] childTypes=${childTypes.join(',')}`)
-			for (const kid of nodeToUse.kids || []) {
-				const t = String(kid.type || '')
-				if (/^[a-z][\w]*$/.test(t)) {
-					// Group suffix if present (e.g., *any)
-					let suffix = ''
-					const first = kid.kids && kid.kids[0]
-					if (first && first.type === '*') {
-						const dv = first.kids && first.kids[0]
-						const grp = dv && String(dv.type || '') === '' && dv.value ? String(dv.value) : ''
-						suffix = grp ? ` *${grp}` : ' *'
-					}
-					// Collect nested prop keys (skip first '*' node)
-					const sub: string[] = []
-					const startIdx = first && first.type === '*' ? 1 : 0
-					const kids2: any[] = kid.kids || []
-					for (let i = startIdx; i < kids2.length; ++i) {
-						const tt = String(kids2[i].type || '')
-						if (/^[a-z][\w?]*\??$/.test(tt)) sub.push(tt)
-					}
-					if (sub.length) lines.push(`${t}${suffix}: ${sub.join(', ')}`)
-					else lines.push(`${t}${suffix}`)
-				}
-			}
-			if (!lines.length) {
-				// Fallback: scan one level deeper
-				for (const child of nodeToUse.kids || []) {
-					for (const g of child.kids || []) {
-						const tt = String(g.type || '')
-						if (/^[a-z][\w]*$/.test(tt)) lines.push(tt)
-					}
-				}
-			}
-			log(`[hover] propsCount=${lines.length}`)
-			if (lines.length) propsBlock = lines.map(l => `- ${l}`).join('\n')
+		if (props.length) {
+			propsBlock = props.map(p => `- ${p}`).join('\n')
 		}
 	}
 

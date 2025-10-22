@@ -7,6 +7,7 @@ const propDefsByUri = new Map<string, Map<string, Spot[]>>()
 const occByUri = new Map<string, Map<string, Spot[]>>()
 const textByUri = new Map<string, string>()
 const compPropsByUri = new Map<string, Map<string, { properties: Set<string>; spot: Spot }>>()
+const tsCompPropsByUri = new Map<string, Map<string, Set<string>>>()
 
 export function updateIndexForDoc(uri: string, root: Ast | null | undefined, text?: string) {
 	if (typeof text === 'string') textByUri.set(uri, text)
@@ -86,6 +87,7 @@ export function removeFromIndex(uri: string) {
 	occByUri.delete(uri)
 	textByUri.delete(uri)
 	compPropsByUri.delete(uri)
+	tsCompPropsByUri.delete(uri)
 }
 
 export function getAllClasses(): string[] {
@@ -135,6 +137,15 @@ export function getIndexStats(uri: string): { classes: number; props: number; oc
 	return { classes, props, occs }
 }
 
+export function updateTsPropsForUri(uri: string, tsMap: Map<string, Set<string>>): void {
+	// Replace TS-derived props for this URI without touching class/prop definitions and their positions.
+	const clone = new Map<string, Set<string>>()
+	for (const [name, set] of tsMap) {
+		clone.set(name, new Set(set))
+	}
+	tsCompPropsByUri.set(uri, clone)
+}
+
 export function getComponentsForUri(uri: string): Map<string, { properties: Set<string>; spot: Spot }> {
 	return compPropsByUri.get(uri) ?? new Map()
 }
@@ -142,6 +153,9 @@ export function getComponentsForUri(uri: string): Map<string, { properties: Set<
 export function getAllComponentNames(): string[] {
 	const out = new Set<string>()
 	for (const m of compPropsByUri.values()) {
+		for (const name of m.keys()) out.add(name)
+	}
+	for (const m of tsCompPropsByUri.values()) {
 		for (const name of m.keys()) out.add(name)
 	}
 	return [...out].sort()
@@ -152,6 +166,10 @@ export function getComponentProps(name: string): string[] {
 	for (const [, map] of compPropsByUri.entries()) {
 		const rec = map.get(name)
 		if (rec) for (const p of rec.properties) out.add(p)
+	}
+	for (const [, map] of tsCompPropsByUri.entries()) {
+		const props = map.get(name)
+		if (props) for (const p of props) out.add(p)
 	}
 	return [...out].sort()
 }

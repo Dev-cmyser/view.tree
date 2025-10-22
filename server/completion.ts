@@ -1,8 +1,9 @@
 import { CompletionItem, CompletionItemKind, Position } from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
+import type { Ast } from './ast/build'
 import { getAllClasses, getAllProps, getComponentProps } from './indexer'
 
-export function getCompletions(doc: TextDocument, position: Position, _root: any): CompletionItem[] {
+export function getCompletions(doc: TextDocument, position: Position, _root: Ast | null | undefined): CompletionItem[] {
 	const text = doc.getText()
 	const offset = doc.offsetAt(position)
 	const lines = text.replace(/\r\n?/g, '\n').split('\n')
