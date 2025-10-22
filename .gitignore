@@ -4,7 +4,6 @@ target/
 # Node artifacts
 build/
 prebuilds/
-node_modules/
 
 # Swift artifacts
 .build/
@@ -37,3 +36,6 @@ dist/
 *.tar.gz
 *.tgz
 *.zip
+
+zed*
+tree-sitter*
