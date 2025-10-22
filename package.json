@@ -78,11 +78,5 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/Dev-cmyser/view.tree.git"
-	},
-	"files": [
-		"bin/",
-		"out/server/",
-		"README.md",
-		"LICENSE"
-	]
+	}
 }
