@@ -27,8 +27,6 @@ function sanitizeSeparators(text) {
         fixed = fixed.replace(/(?:<\s+=\s*>|<\s*=\s+>)/g, '<=>');
         fixed = fixed.replace(/<\s+=/g, '<=');
         fixed = fixed.replace(/=\s+>/g, '=>');
-        // disallow raw string after operator usage (invalid), drop trailing raw token
-        // fixed = fixed.replace(/((?:<=>|<=|=>)\s+\S+)\s+\\.*$/, '$1')
         fixed = fixed.replace(/ {2,}/g, ' ');
         lines[i] = indent + fixed;
     }
@@ -84,20 +82,6 @@ function spacingDiagnostics(text) {
                 issues.push({ line: i, start, end, message: msg });
             }
         }
-        // Raw string after operator usage (invalid) — только для => и <=>
-        // Raw string after operator — commented out, trailing \ is valid for empty string values
-        // const rawAfterOp = /((?:<=>|=>)\s+\S+)\s+\\.*$/
-        // const bad = rawAfterOp.exec(rest)
-        // if (bad) {
-        // 	const start = indent.length + bad.index + bad[1].length
-        // 	const end = indent.length + rest.length
-        // 	issues.push({
-        // 		line: i,
-        // 		start,
-        // 		end,
-        // 		message: 'Raw string not allowed after => or <=>; remove trailing raw data',
-        // 	})
-        // }
         const ms = /( {2,})/g;
         let m3;
         while ((m3 = ms.exec(rest))) {
