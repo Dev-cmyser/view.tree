@@ -282,6 +282,14 @@ jobs:
               with:
                   package: "${project_path}"
 
+            - uses: b-on-g/mol-prerender-action@main
+              if: github.ref == 'refs/heads/master'
+              with:
+                  folder: "${project_path}/-"
+                  base-url: "${gh_pages_url}"
+                  screens: |
+                      home
+
             - uses: hyoo-ru/gh-deploy@v4.4.1
               if: github.ref == 'refs/heads/master'
               with:
