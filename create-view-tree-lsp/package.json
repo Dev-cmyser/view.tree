@@ -1,0 +1,24 @@
+{
+	"name": "create-view-tree-lsp",
+	"version": "0.1.0",
+	"description": "Create new $mol project with view.tree LSP support",
+	"license": "MIT",
+	"author": "Dev-cmyser",
+	"bin": {
+		"create-view-tree-lsp": "bin/create-view-tree-lsp"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"keywords": [
+		"create",
+		"mol",
+		"view.tree",
+		"scaffold",
+		"lsp"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Dev-cmyser/create-view-tree-lsp.git"
+	}
+}
