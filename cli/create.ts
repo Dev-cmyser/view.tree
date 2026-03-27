@@ -7,8 +7,7 @@ interface CreateOptions {
 	tauri: boolean
 }
 
-function parse_flags(args: string[]): { raw: string, options: CreateOptions } {
-
+function parse_flags(args: string[]): { raw: string; options: CreateOptions } {
 	const options: CreateOptions = {
 		docker: true,
 		baza: true,
@@ -27,8 +26,7 @@ function parse_flags(args: string[]): { raw: string, options: CreateOptions } {
 	return { raw, options }
 }
 
-function parse_input(raw: string): { segments: string[], app_path: string, project_path: string } {
-
+function parse_input(raw: string): { segments: string[]; app_path: string; project_path: string } {
 	let input = raw.replace(/^\$/, '')
 	input = input.replace(/_/g, '/')
 
@@ -59,7 +57,6 @@ function write(filepath: string, content: string) {
 }
 
 export function create(args: string[]) {
-
 	const { raw, options } = parse_flags(args)
 
 	if (!raw) {
@@ -94,7 +91,9 @@ export function create(args: string[]) {
 	console.log(``)
 
 	// ── index.html ──
-	write(path.join(cwd, app_path, 'index.html'), `<!doctype html>
+	write(
+		path.join(cwd, app_path, 'index.html'),
+		`<!doctype html>
 <html lang="ru" mol_view_root>
 	<head>
 		<meta charset="utf-8" />
@@ -116,17 +115,23 @@ export function create(args: string[]) {
 		<script src="web.js"></script>
 	</body>
 </html>
-`)
+`,
+	)
 
 	// ── app.meta.tree ──
-	write(path.join(cwd, app_path, 'app.meta.tree'), `include \\/mol/offline/install
+	write(
+		path.join(cwd, app_path, 'app.meta.tree'),
+		`include \\/mol/offline/install
 deploy \\/${asset_path}/assets
-`)
+`,
+	)
 
 	// ── app.view.tree ──
 	const baza_tools = options.baza ? `\n\t\t<= Status $giper_baza_status` : ''
 
-	write(path.join(cwd, app_path, 'app.view.tree'), `${$app} $mol_page
+	write(
+		path.join(cwd, app_path, 'app.view.tree'),
+		`${$app} $mol_page
 	title @ \\${name}
 	pages *
 		home <= Home $mol_page
@@ -159,10 +164,13 @@ deploy \\/${asset_path}/assets
 				\\$mol_theme_calm_light
 				\\$mol_theme_calm_dark
 	body <= screen_body /
-`)
+`,
+	)
 
 	// ── app.view.ts ──
-	write(path.join(cwd, app_path, 'app.view.ts'), `namespace $.$$ {
+	write(
+		path.join(cwd, app_path, 'app.view.ts'),
+		`namespace $.$$ {
 
 	export class ${$app} extends $.${$app} {
 
@@ -182,19 +190,25 @@ deploy \\/${asset_path}/assets
 	}
 
 }
-`)
+`,
+	)
 
 	// ── app.view.css.ts ──
-	write(path.join(cwd, app_path, 'app.view.css.ts'), `namespace $ {
+	write(
+		path.join(cwd, app_path, 'app.view.css.ts'),
+		`namespace $ {
 
 	$mol_style_define( ${$app}, {
 	})
 
 }
-`)
+`,
+	)
 
 	// ── app.test.ts ──
-	write(path.join(cwd, app_path, 'app.test.ts'), `namespace $ {
+	write(
+		path.join(cwd, app_path, 'app.test.ts'),
+		`namespace $ {
 
 	$mol_test({
 
@@ -206,17 +220,23 @@ deploy \\/${asset_path}/assets
 	})
 
 }
-`)
+`,
+	)
 
 	// ── app.locale=ru.json ──
-	write(path.join(cwd, app_path, 'app.locale=ru.json'), `{
+	write(
+		path.join(cwd, app_path, 'app.locale=ru.json'),
+		`{
 	"${$app}_title": "${name}"
 }
-`)
+`,
+	)
 
 	// ── store/store.ts (Giper Baza) ──
 	if (options.baza) {
-		write(path.join(cwd, project_path, 'store', 'store.ts'), `namespace $ {
+		write(
+			path.join(cwd, project_path, 'store', 'store.ts'),
+			`namespace $ {
 
 	/** Data registry in home land */
 	export class ${$}_registry extends $giper_baza_entity.with({
@@ -241,18 +261,24 @@ deploy \\/${asset_path}/assets
 	}
 
 }
-`)
+`,
+		)
 	}
 
 	// ── assets/ ──
-	write(path.join(cwd, project_path, 'assets', 'logo.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+	write(
+		path.join(cwd, project_path, 'assets', 'logo.svg'),
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 	<rect width="64" height="64" rx="12" fill="#7c3aed"/>
 	<text x="32" y="44" font-size="32" font-family="system-ui" fill="white" text-anchor="middle">${name[0]?.toUpperCase() ?? 'A'}</text>
 </svg>
-`)
+`,
+	)
 
 	// ── .github/workflows/deploy.yml ──
-	write(path.join(cwd, project_path, '.github', 'workflows', 'deploy.yml'), `name: ${$app}
+	write(
+		path.join(cwd, project_path, '.github', 'workflows', 'deploy.yml'),
+		`name: ${$app}
 
 permissions: write-all
 
@@ -276,7 +302,7 @@ jobs:
                   package: "${project_path}"
 
             - uses: b-on-g/mol-prerender-action@main
-              if: github.ref == 'refs/heads/master'
+              if: github.ref == 'refs/heads/main'
               with:
                   folder: "${project_path}/-"
                   base-url: "${gh_pages_url}"
@@ -284,7 +310,7 @@ jobs:
                       home
 
             - uses: hyoo-ru/gh-deploy@v4.4.1
-              if: github.ref == 'refs/heads/master'
+              if: github.ref == 'refs/heads/main'
               with:
                   folder: "${project_path}/-"
 
@@ -315,12 +341,14 @@ jobs:
                     git commit -m "Clean up preview for deleted branch: $BRANCH_NAME"
                     git push
                   fi
-`)
+`,
+	)
 
 	// ── Tauri ──
 	if (options.tauri) {
-
-		write(path.join(cwd, project_path, '.github', 'workflows', 'tauri.yml'), `name: Tauri Desktop Build
+		write(
+			path.join(cwd, project_path, '.github', 'workflows', 'tauri.yml'),
+			`name: Tauri Desktop Build
 
 on:
   push:
@@ -337,22 +365,32 @@ jobs:
       tauri_config: ${project_path}/src-tauri/tauri.conf.json
       checkout_path: ${project_path}
     secrets: inherit
-`)
+`,
+		)
 
-		write(path.join(cwd, project_path, 'src-tauri', 'tauri.conf.json'), JSON.stringify({
-			"$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri.schema.json",
-			build: {
-				frontendDist: `../-`,
-				devUrl: `http://localhost:9080/${app_path}/-/test.html`,
-			},
-			app: {
-				title: name,
-				windows: [{ title: name, width: 1200, height: 800 }],
-			},
-			identifier: `com.${gh_org}.${gh_repo}`,
-		}, null, '\t') + '\n')
+		write(
+			path.join(cwd, project_path, 'src-tauri', 'tauri.conf.json'),
+			JSON.stringify(
+				{
+					$schema: 'https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri.schema.json',
+					build: {
+						frontendDist: `../-`,
+						devUrl: `http://localhost:9080/${app_path}/-/test.html`,
+					},
+					app: {
+						title: name,
+						windows: [{ title: name, width: 1200, height: 800 }],
+					},
+					identifier: `com.${gh_org}.${gh_repo}`,
+				},
+				null,
+				'\t',
+			) + '\n',
+		)
 
-		write(path.join(cwd, project_path, 'src-tauri', 'Cargo.toml'), `[package]
+		write(
+			path.join(cwd, project_path, 'src-tauri', 'Cargo.toml'),
+			`[package]
 name = "${gh_repo}"
 version = "0.1.0"
 edition = "2024"
@@ -368,28 +406,36 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-`)
+`,
+		)
 
-		write(path.join(cwd, project_path, 'src-tauri', 'src', 'lib.rs'), `#[cfg_attr(mobile, tauri::mobile_entry_point)]
+		write(
+			path.join(cwd, project_path, 'src-tauri', 'src', 'lib.rs'),
+			`#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-`)
+`,
+		)
 
-		write(path.join(cwd, project_path, 'src-tauri', 'src', 'main.rs'), `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+		write(
+			path.join(cwd, project_path, 'src-tauri', 'src', 'main.rs'),
+			`#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
     ${gh_repo.replace(/-/g, '_')}_lib::run()
 }
-`)
+`,
+		)
 	}
 
 	// ── Docker ──
 	if (options.docker) {
-
-		write(path.join(cwd, project_path, 'Dockerfile'), `FROM node:20-alpine AS build
+		write(
+			path.join(cwd, project_path, 'Dockerfile'),
+			`FROM node:20-alpine AS build
 WORKDIR /app
 RUN git clone --depth 1 https://github.com/hyoo-ru/mam.git . \\
     && npm install
@@ -399,33 +445,43 @@ RUN npx mam ${project_path}
 FROM nginx:alpine
 COPY --from=build /app/${project_path}/- /usr/share/nginx/html
 EXPOSE 80
-`)
+`,
+		)
 
-		write(path.join(cwd, project_path, 'docker-compose.yml'), `services:
+		write(
+			path.join(cwd, project_path, 'docker-compose.yml'),
+			`services:
   web:
     build: .
     ports:
       - "8080:80"
-`)
+`,
+		)
 	}
 
 	// ── README.md ──
-	const docker_section = options.docker ? `
+	const docker_section = options.docker
+		? `
 ## Docker
 
 \`\`\`bash
 docker compose up --build
 # Open http://localhost:8080
 \`\`\`
-` : ''
+`
+		: ''
 
-	const tauri_section = options.tauri ? `
+	const tauri_section = options.tauri
+		? `
 ## Desktop (Tauri)
 
 Tag \`v*\` triggers Tauri build via GitHub Actions.
-` : ''
+`
+		: ''
 
-	write(path.join(cwd, project_path, 'README.md'), `# ${name}
+	write(
+		path.join(cwd, project_path, 'README.md'),
+		`# ${name}
 
 ## Dev
 
@@ -445,16 +501,23 @@ ${docker_section}
 Push to \`master\` → GitHub Actions → GitHub Pages: ${gh_pages_url}
 
 Feature branches deploy to: ${gh_pages_url}{branch-name}/
-${tauri_section}`)
+${tauri_section}`,
+	)
 
 	// ── .gitignore ──
-	write(path.join(cwd, project_path, '.gitignore'), `-*
+	write(
+		path.join(cwd, project_path, '.gitignore'),
+		`-*
 .DS_Store
-`)
+`,
+	)
 
 	// ── .gitattributes ──
-	write(path.join(cwd, project_path, '.gitattributes'), `* -text
-`)
+	write(
+		path.join(cwd, project_path, '.gitattributes'),
+		`* -text
+`,
+	)
 
 	console.log(`\nDone! Project ${$app} created.`)
 	console.log(`\nNext steps:`)
