@@ -300,19 +300,12 @@ jobs:
             - uses: hyoo-ru/mam_build@master2
               with:
                   package: "${project_path}"
-
-            - uses: b-on-g/mol-prerender-action@main
-              if: github.ref == 'refs/heads/main'
-              with:
-                  folder: "${project_path}/-"
-                  base-url: "${gh_pages_url}"
-                  screens: |
-                      home
+                  modules: 'app'
 
             - uses: hyoo-ru/gh-deploy@v4.4.1
               if: github.ref == 'refs/heads/main'
               with:
-                  folder: "${project_path}/-"
+                  folder: "${app_path}/-"
 
             - name: Deploy feature branch
               if: startsWith(github.ref, 'refs/heads/feature/')
@@ -320,6 +313,15 @@ jobs:
               with:
                   folder: "${project_path}/-"
                   target-folder: \${{ github.ref_name }}
+
+            - uses: b-on-g/mol-prerender-action@main
+              if: github.ref == 'refs/heads/main'
+              continue-on-error: true
+              with:
+                  folder: "${app_path}/-"
+                  base-url: "${gh_pages_url}"
+                  screens: |
+                      home
 
     cleanup:
         if: github.event_name == 'delete' && startsWith(github.event.ref, 'feature/')

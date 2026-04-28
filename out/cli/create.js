@@ -281,19 +281,12 @@ jobs:
             - uses: hyoo-ru/mam_build@master2
               with:
                   package: "${project_path}"
-
-            - uses: b-on-g/mol-prerender-action@main
-              if: github.ref == 'refs/heads/master'
-              with:
-                  folder: "${project_path}/-"
-                  base-url: "${gh_pages_url}"
-                  screens: |
-                      home
+                  modules: 'app'
 
             - uses: hyoo-ru/gh-deploy@v4.4.1
-              if: github.ref == 'refs/heads/master'
+              if: github.ref == 'refs/heads/main'
               with:
-                  folder: "${project_path}/-"
+                  folder: "${app_path}/-"
 
             - name: Deploy feature branch
               if: startsWith(github.ref, 'refs/heads/feature/')
@@ -301,6 +294,15 @@ jobs:
               with:
                   folder: "${project_path}/-"
                   target-folder: \${{ github.ref_name }}
+
+            - uses: b-on-g/mol-prerender-action@main
+              if: github.ref == 'refs/heads/main'
+              continue-on-error: true
+              with:
+                  folder: "${app_path}/-"
+                  base-url: "${gh_pages_url}"
+                  screens: |
+                      home
 
     cleanup:
         if: github.event_name == 'delete' && startsWith(github.event.ref, 'feature/')
@@ -344,7 +346,7 @@ jobs:
     secrets: inherit
 `);
         write(path.join(cwd, project_path, 'src-tauri', 'tauri.conf.json'), JSON.stringify({
-            "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri.schema.json",
+            $schema: 'https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri.schema.json',
             build: {
                 frontendDist: `../-`,
                 devUrl: `http://localhost:9080/${app_path}/-/test.html`,
@@ -407,19 +409,23 @@ EXPOSE 80
 `);
     }
     // ── README.md ──
-    const docker_section = options.docker ? `
+    const docker_section = options.docker
+        ? `
 ## Docker
 
 \`\`\`bash
 docker compose up --build
 # Open http://localhost:8080
 \`\`\`
-` : '';
-    const tauri_section = options.tauri ? `
+`
+        : '';
+    const tauri_section = options.tauri
+        ? `
 ## Desktop (Tauri)
 
 Tag \`v*\` triggers Tauri build via GitHub Actions.
-` : '';
+`
+        : '';
     write(path.join(cwd, project_path, 'README.md'), `# ${name}
 
 ## Dev
