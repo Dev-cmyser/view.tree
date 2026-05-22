@@ -5,6 +5,7 @@ interface CreateOptions {
 	docker: boolean
 	baza: boolean
 	tauri: boolean
+	prerender: boolean
 }
 
 function parse_flags(args: string[]): { raw: string; options: CreateOptions } {
@@ -12,6 +13,7 @@ function parse_flags(args: string[]): { raw: string; options: CreateOptions } {
 		docker: true,
 		baza: true,
 		tauri: true,
+		prerender: false,
 	}
 
 	let raw = ''
@@ -20,6 +22,8 @@ function parse_flags(args: string[]): { raw: string; options: CreateOptions } {
 		if (arg === '--no-docker') options.docker = false
 		else if (arg === '--no-baza') options.baza = false
 		else if (arg === '--no-tauri') options.tauri = false
+		else if (arg === '--no-prerender') options.prerender = false
+		else if (arg === '--prerender') options.prerender = true
 		else if (!arg.startsWith('--')) raw = raw || arg
 	}
 
@@ -63,9 +67,10 @@ export function create(args: string[]) {
 		console.error(`Usage: view-tree-lsp create <namespace/name> [flags]`)
 		console.error(``)
 		console.error(`Flags:`)
-		console.error(`  --no-docker   Skip Docker files`)
-		console.error(`  --no-baza     Skip Giper Baza store`)
-		console.error(`  --no-tauri    Skip Tauri desktop files`)
+		console.error(`  --no-docker    Skip Docker files`)
+		console.error(`  --no-baza      Skip Giper Baza store`)
+		console.error(`  --no-tauri     Skip Tauri desktop files`)
+		console.error(`  --prerender    Add gh-pages prerender step (off by default)`)
 		process.exit(1)
 	}
 
@@ -84,6 +89,7 @@ export function create(args: string[]) {
 	if (!options.docker) skipped.push('docker')
 	if (!options.baza) skipped.push('baza')
 	if (!options.tauri) skipped.push('tauri')
+	if (!options.prerender) skipped.push('prerender')
 
 	console.log(`\nCreating $mol project: ${$app}`)
 	console.log(`Path: ${project_path}/`)
@@ -313,16 +319,16 @@ jobs:
               with:
                   folder: "${project_path}/-"
                   target-folder: \${{ github.ref_name }}
-
+${options.prerender ? `
             - uses: b-on-g/mol-prerender-action@main
               if: github.ref == 'refs/heads/main'
               continue-on-error: true
               with:
                   folder: "${app_path}/-"
-                  base-url: "${gh_pages_url}"
+                  base-url: "https://\${{ github.repository_owner }}.github.io/\${{ github.event.repository.name }}/"
                   screens: |
                       home
-
+` : ''}
     cleanup:
         if: github.event_name == 'delete' && startsWith(github.event.ref, 'feature/')
         runs-on: ubuntu-latest

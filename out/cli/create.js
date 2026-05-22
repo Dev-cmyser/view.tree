@@ -41,6 +41,7 @@ function parse_flags(args) {
         docker: true,
         baza: true,
         tauri: true,
+        prerender: false,
     };
     let raw = '';
     for (const arg of args) {
@@ -50,6 +51,10 @@ function parse_flags(args) {
             options.baza = false;
         else if (arg === '--no-tauri')
             options.tauri = false;
+        else if (arg === '--no-prerender')
+            options.prerender = false;
+        else if (arg === '--prerender')
+            options.prerender = true;
         else if (!arg.startsWith('--'))
             raw = raw || arg;
     }
@@ -84,9 +89,10 @@ function create(args) {
         console.error(`Usage: view-tree-lsp create <namespace/name> [flags]`);
         console.error(``);
         console.error(`Flags:`);
-        console.error(`  --no-docker   Skip Docker files`);
-        console.error(`  --no-baza     Skip Giper Baza store`);
-        console.error(`  --no-tauri    Skip Tauri desktop files`);
+        console.error(`  --no-docker    Skip Docker files`);
+        console.error(`  --no-baza      Skip Giper Baza store`);
+        console.error(`  --no-tauri     Skip Tauri desktop files`);
+        console.error(`  --prerender    Add gh-pages prerender step (off by default)`);
         process.exit(1);
     }
     const { segments, app_path, project_path } = parse_input(raw);
@@ -105,6 +111,8 @@ function create(args) {
         skipped.push('baza');
     if (!options.tauri)
         skipped.push('tauri');
+    if (!options.prerender)
+        skipped.push('prerender');
     console.log(`\nCreating $mol project: ${$app}`);
     console.log(`Path: ${project_path}/`);
     if (skipped.length)
@@ -294,16 +302,16 @@ jobs:
               with:
                   folder: "${project_path}/-"
                   target-folder: \${{ github.ref_name }}
-
+${options.prerender ? `
             - uses: b-on-g/mol-prerender-action@main
               if: github.ref == 'refs/heads/main'
               continue-on-error: true
               with:
                   folder: "${app_path}/-"
-                  base-url: "${gh_pages_url}"
+                  base-url: "https://\${{ github.repository_owner }}.github.io/\${{ github.event.repository.name }}/"
                   screens: |
                       home
-
+` : ''}
     cleanup:
         if: github.event_name == 'delete' && startsWith(github.event.ref, 'feature/')
         runs-on: ubuntu-latest
