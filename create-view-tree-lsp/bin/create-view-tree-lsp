@@ -2,7 +2,7 @@
 const { execFileSync } = require('child_process')
 
 try {
-	execFileSync('npx', ['view-tree-lsp', 'create', ...process.argv.slice(2)], { stdio: 'inherit' })
+	execFileSync('npx', ['--yes', 'view-tree-lsp@latest', 'create', ...process.argv.slice(2)], { stdio: 'inherit' })
 } catch {
 	process.exit(1)
 }
