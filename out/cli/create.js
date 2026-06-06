@@ -304,7 +304,7 @@ jobs:
                   target-folder: \${{ github.ref_name }}
 ${options.prerender ? `
             - uses: b-on-g/mol-prerender-action@main
-              if: github.ref == 'refs/heads/main'
+              if: startsWith(github.ref, 'refs/tags/')
               continue-on-error: true
               with:
                   folder: "${app_path}/-"
@@ -451,7 +451,7 @@ npx mam ${project_path}
 ${docker_section}
 ## Deploy
 
-Push to \`master\` → GitHub Actions → GitHub Pages: ${gh_pages_url}
+Push to \`main\` → GitHub Actions → GitHub Pages: ${gh_pages_url}
 
 Feature branches deploy to: ${gh_pages_url}{branch-name}/
 ${tauri_section}`);
