@@ -4,6 +4,7 @@ import $ from 'mol_tree2'
 import { sanitizeSeparators } from './format'
 import { fsPathToUri } from './resolver'
 import { extractTsProps } from './tsProps'
+import { indexStyleFile } from './styleIndex'
 
 import { updateTsPropsForUri } from './indexer'
 
@@ -63,6 +64,10 @@ export async function scanProject(
 				const compMap = extractTsProps(text0)
 				if (compMap.size) {
 					updateTsPropsForUri(uri, compMap)
+				}
+				// Index $mol_style_define/attach blocks for the mol.style extension
+				if (file.endsWith('.view.css.ts')) {
+					try { indexStyleFile(uri, file, text0) } catch {}
 				}
 			}
 		} catch {}

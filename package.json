@@ -2,7 +2,7 @@
 	"name": "view-tree-lsp",
 	"displayName": "view.tree LSP $mol",
 	"description": "Language Server Protocol implementation for view.tree format",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"license": "MIT",
 	"author": "Dev-cmyser",
 	"homepage": "https://github.com/Dev-cmyser/view.tree#readme",
@@ -64,11 +64,13 @@
 		"mol_tree2": "^1.0.1231",
 		"vscode-languageclient": "^9.0.1",
 		"vscode-languageserver": "^9.0.1",
-		"vscode-languageserver-textdocument": "^1.0.12"
+		"vscode-languageserver-textdocument": "^1.0.12",
+		"ws": "^8.18.0"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.1",
 		"@types/vscode": "^1.76.0",
+		"@types/ws": "^8.5.13",
 		"typescript": "^5.9.2"
 	},
 	"publisher": "devcmyser",

@@ -43,6 +43,7 @@ const mol_tree2_1 = __importDefault(require("mol_tree2"));
 const format_1 = require("./format");
 const resolver_1 = require("./resolver");
 const tsProps_1 = require("./tsProps");
+const styleIndex_1 = require("./styleIndex");
 const indexer_1 = require("./indexer");
 async function* walk(dir, ignore) {
     let entries = [];
@@ -101,6 +102,13 @@ async function scanProject(workspaceRootFs, trees, updateIndexForDoc, log) {
                 const compMap = (0, tsProps_1.extractTsProps)(text0);
                 if (compMap.size) {
                     (0, indexer_1.updateTsPropsForUri)(uri, compMap);
+                }
+                // Index $mol_style_define/attach blocks for the mol.style extension
+                if (file.endsWith('.view.css.ts')) {
+                    try {
+                        (0, styleIndex_1.indexStyleFile)(uri, file, text0);
+                    }
+                    catch { }
                 }
             }
         }

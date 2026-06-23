@@ -51,6 +51,8 @@ const resolver_1 = require("./resolver");
 const format_1 = require("./format");
 const scan_1 = require("./scan");
 const tsProps_1 = require("./tsProps");
+const styleIndex_1 = require("./styleIndex");
+const styleWs_1 = require("./styleWs");
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 const trees = new Map();
@@ -136,6 +138,12 @@ documents.onDidChangeContent(async (change) => {
         if (/\.ts$/.test(uri) && !/\.d\.ts$/.test(uri)) {
             const tsProps = (0, tsProps_1.extractTsProps)(text);
             (0, indexer_1.updateTsPropsForUri)(uri, tsProps);
+            if (/\.view\.css\.ts$/.test(uri)) {
+                try {
+                    (0, styleIndex_1.indexStyleFile)(uri, (0, resolver_1.uriToFsPath)(uri), text);
+                }
+                catch { }
+            }
         }
     }
     catch { }
@@ -167,10 +175,16 @@ documents.onDidClose(ev => {
     const uri = ev.document.uri;
     trees.delete(uri);
     (0, indexer_1.removeFromIndex)(uri);
+    if (/\.view\.css\.ts$/.test(uri))
+        (0, styleIndex_1.removeStyleEntriesForUri)(uri);
     log(`[view.tree] closed: ${uri}`);
 });
 // Kick off a background project scan after initialize
 connection.onInitialized(async () => {
+    // Start the WebSocket endpoint first so the extension can connect even while we're still scanning.
+    const port = Number(process.env.MOL_STYLE_WS ?? 7531);
+    if (port > 0)
+        (0, styleWs_1.startStyleWs)(port, log);
     if (!workspaceRootFs)
         return;
     try {

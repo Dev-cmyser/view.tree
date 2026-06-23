@@ -47,6 +47,8 @@ import { formatText, sanitizeSeparators, spacingDiagnostics } from './format'
 import { scanProject } from './scan'
 import { sanitizeLineSpaces } from './format'
 import { extractTsProps } from './tsProps'
+import { indexStyleFile, removeStyleEntriesForUri } from './styleIndex'
+import { startStyleWs } from './styleWs'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -135,6 +137,9 @@ documents.onDidChangeContent(async change => {
 		if (/\.ts$/.test(uri) && !/\.d\.ts$/.test(uri)) {
 			const tsProps = extractTsProps(text)
 			updateTsPropsForUri(uri, tsProps)
+			if (/\.view\.css\.ts$/.test(uri)) {
+				try { indexStyleFile(uri, uriToFsPath(uri), text) } catch {}
+			}
 		}
 	} catch {}
 
@@ -169,11 +174,15 @@ documents.onDidClose(ev => {
 	const uri = ev.document.uri
 	trees.delete(uri)
 	removeFromIndex(uri)
+	if (/\.view\.css\.ts$/.test(uri)) removeStyleEntriesForUri(uri)
 	log(`[view.tree] closed: ${uri}`)
 })
 
 // Kick off a background project scan after initialize
 connection.onInitialized(async () => {
+	// Start the WebSocket endpoint first so the extension can connect even while we're still scanning.
+	const port = Number(process.env.MOL_STYLE_WS ?? 7531)
+	if (port > 0) startStyleWs(port, log)
 	if (!workspaceRootFs) return
 	try {
 		log(`[scan] start root=${workspaceRootFs}`)

@@ -42,6 +42,7 @@ function parse_flags(args) {
         baza: true,
         tauri: true,
         prerender: false,
+        seo: false,
     };
     let raw = '';
     for (const arg of args) {
@@ -55,6 +56,10 @@ function parse_flags(args) {
             options.prerender = false;
         else if (arg === '--prerender')
             options.prerender = true;
+        else if (arg === '--no-seo')
+            options.seo = false;
+        else if (arg === '--seo')
+            options.seo = true;
         else if (!arg.startsWith('--'))
             raw = raw || arg;
     }
@@ -92,7 +97,8 @@ function create(args) {
         console.error(`  --no-docker    Skip Docker files`);
         console.error(`  --no-baza      Skip Giper Baza store`);
         console.error(`  --no-tauri     Skip Tauri desktop files`);
-        console.error(`  --prerender    Add gh-pages prerender step (off by default)`);
+        console.error(`  --prerender    Add gh-pages prerender via b-on-g/mol-prerender-action (off)`);
+        console.error(`  --seo          Add $bog_seo runtime (pathname router + sitemap + robots + llms + meta inject) (off)`);
         process.exit(1);
     }
     const { segments, app_path, project_path } = parse_input(raw);
@@ -113,6 +119,8 @@ function create(args) {
         skipped.push('tauri');
     if (!options.prerender)
         skipped.push('prerender');
+    if (!options.seo)
+        skipped.push('seo');
     console.log(`\nCreating $mol project: ${$app}`);
     console.log(`Path: ${project_path}/`);
     if (skipped.length)
@@ -145,7 +153,9 @@ function create(args) {
     // ── app.meta.tree ──
     write(path.join(cwd, app_path, 'app.meta.tree'), `include \\/mol/offline/install
 deploy \\/${asset_path}/assets
-`);
+${options.seo ? `pack bog/builderui/router
+pack bog/meta
+` : ''}`);
     // ── app.view.tree ──
     const baza_tools = options.baza ? `\n\t\t<= Status $giper_baza_status` : '';
     write(path.join(cwd, app_path, 'app.view.tree'), `${$app} $mol_page
@@ -183,10 +193,34 @@ deploy \\/${asset_path}/assets
 	body <= screen_body /
 `);
     // ── app.view.ts ──
+    const seo_static = options.seo
+        ? `\n\t\tstatic {\n\t\t\t$bog_builderui_router.activate()\n\t\t}\n`
+        : '';
+    const seo_meta = options.seo
+        ? `
+		@ $mol_mem
+		meta(): $bog_meta_data {
+			const screen = this.screen()
+			const titles: { [ k: string ]: $bog_meta_data } = {
+				home: {
+					title: '${name}',
+					description: '${name} — built with $mol',
+					og_title: '${name}',
+					og_type: 'website',
+				},
+			}
+			return titles[ screen ] ?? titles.home
+		}
+
+		override attr() {
+			return { ... super.attr(), ... $bog_meta_attr( this ) }
+		}
+`
+        : '';
     write(path.join(cwd, app_path, 'app.view.ts'), `namespace $.$$ {
 
 	export class ${$app} extends $.${$app} {
-
+${seo_static}
 		@ $mol_mem
 		screen( next?: string ) {
 			return $mol_state_arg.value( 'screen', next ) ?? 'home'
@@ -199,7 +233,7 @@ deploy \\/${asset_path}/assets
 			const page = ( pages as any )[ screen ]
 			return page ? [ page ] : []
 		}
-
+${seo_meta}
 	}
 
 }
@@ -235,9 +269,14 @@ deploy \\/${asset_path}/assets
     if (options.baza) {
         write(path.join(cwd, project_path, 'store', 'store.ts'), `namespace $ {
 
+	/** Single item in registry */
+	export class ${$}_item extends $giper_baza_entity.with({
+		Title: $giper_baza_atom_text,
+	}) {}
+
 	/** Data registry in home land */
 	export class ${$}_registry extends $giper_baza_entity.with({
-		Items: $giper_baza_list_link,
+		Items: $giper_baza_list_link.to( () => ${$}_item ),
 	}) {}
 
 	/** Data store */
@@ -311,6 +350,28 @@ ${options.prerender ? `
                   base-url: "https://\${{ github.repository_owner }}.github.io/\${{ github.event.repository.name }}/"
                   screens: |
                       home
+` : ''}${options.seo ? `
+            - name: Build $bog_seo
+              if: startsWith(github.ref, 'refs/tags/')
+              run: npx mam bog/seo
+
+            - name: Serve static and dump prerendered HTML
+              if: startsWith(github.ref, 'refs/tags/')
+              continue-on-error: true
+              run: |
+                  npx --yes serve -s "${app_path}/-" -l 9090 > /tmp/serve.log 2>&1 &
+                  SERVE_PID=$!
+                  sleep 2
+                  BOG_SEO_UPSTREAM=http://localhost:9090 \\
+                  BOG_SEO_CANONICAL_BASE="https://\${{ github.repository_owner }}.github.io/\${{ github.event.repository.name }}" \\
+                  BOG_SEO_DUMP_DIR="${app_path}/-/_seo" \\
+                  BOG_SEO_WARMUP=true \\
+                  node bog/seo/-/node.js
+                  kill $SERVE_PID || true
+                  if [ -d "${app_path}/-/_seo" ]; then
+                      cp -rn "${app_path}/-/_seo/"* "${app_path}/-/" || true
+                      rm -rf "${app_path}/-/_seo"
+                  fi
 ` : ''}
     cleanup:
         if: github.event_name == 'delete' && startsWith(github.event.ref, 'feature/')
@@ -414,7 +475,32 @@ EXPOSE 80
     build: .
     ports:
       - "8080:80"
+${options.seo ? `  seo:
+    build:
+      context: .
+      dockerfile: Dockerfile.seo
+    environment:
+      BOG_SEO_UPSTREAM: http://web
+      BOG_SEO_CANONICAL_BASE: https://example.com
+      BOG_SEO_WARMUP: 'true'
+    depends_on:
+      - web
+    ports:
+      - "3334:3334"
+` : ''}`);
+        if (options.seo) {
+            write(path.join(cwd, project_path, 'Dockerfile.seo'), `FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache git chromium nss ca-certificates ttf-freefont \\
+    && git clone --depth 1 https://github.com/hyoo-ru/mam.git . \\
+    && npm install \\
+    && npx mam bog/seo
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+EXPOSE 3334
+CMD ["node", "bog/seo/-/node.js"]
 `);
+        }
     }
     // ── README.md ──
     const docker_section = options.docker
@@ -424,7 +510,46 @@ EXPOSE 80
 \`\`\`bash
 docker compose up --build
 # Open http://localhost:8080
+${options.seo ? `# Bots → http://localhost:3334 (SEO prerender)
+` : ''}\`\`\`
+`
+        : '';
+    const seo_section = options.seo
+        ? `
+## SEO ($bog_seo)
+
+Pathname-router (\`$bog_builderui_router.activate()\`) активирован в \`app.view.ts\`. URL формы \`/path/key=value\` вместо \`#!key=value\`. Dev-режим (\`/-/test.html\`) остаётся на хеш-роутере автоматически.
+
+Meta (\`<title>\`, \`<meta description>\`, \`<meta og:*>\`, \`<link rel=canonical>\`) объявляется в \`meta()\` и инжектится в head через \`$bog_meta_attr\` + crawler.
+
+### Локально
+
+\`\`\`bash
+# Поднять собранный app как static (после \`npx mam ${project_path}\`)
+npx serve -s ${app_path}/- -l 9090
+
+# Поднять SEO сервис на :3334
+BOG_SEO_UPSTREAM=http://localhost:9090 \\
+BOG_SEO_WARMUP=true \\
+node bog/seo/-/node.js
+
+# Эндпоинты
+curl http://localhost:3334/sitemap.xml
+curl http://localhost:3334/robots.txt
+curl http://localhost:3334/llms.txt
+curl -A "Googlebot" http://localhost:3334/
 \`\`\`
+
+### Dump-режим (для CI)
+
+\`\`\`bash
+BOG_SEO_UPSTREAM=http://localhost:9090 \\
+BOG_SEO_DUMP_DIR=${app_path}/-/_seo \\
+BOG_SEO_CANONICAL_BASE=${gh_pages_url.replace(/\/$/, '')} \\
+node bog/seo/-/node.js
+\`\`\`
+
+В CI workflow это уже подключено под тег \`v*\`.
 `
         : '';
     const tauri_section = options.tauri
@@ -454,7 +579,7 @@ ${docker_section}
 Push to \`main\` → GitHub Actions → GitHub Pages: ${gh_pages_url}
 
 Feature branches deploy to: ${gh_pages_url}{branch-name}/
-${tauri_section}`);
+${seo_section}${tauri_section}`);
     // ── .gitignore ──
     write(path.join(cwd, project_path, '.gitignore'), `-*
 .DS_Store
