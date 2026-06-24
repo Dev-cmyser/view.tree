@@ -43,6 +43,7 @@ function parse_flags(args) {
         tauri: true,
         prerender: false,
         seo: false,
+        backend: false,
     };
     let raw = '';
     for (const arg of args) {
@@ -60,6 +61,10 @@ function parse_flags(args) {
             options.seo = false;
         else if (arg === '--seo')
             options.seo = true;
+        else if (arg === '--no-backend')
+            options.backend = false;
+        else if (arg === '--backend')
+            options.backend = true;
         else if (!arg.startsWith('--'))
             raw = raw || arg;
     }
@@ -99,6 +104,7 @@ function create(args) {
         console.error(`  --no-tauri     Skip Tauri desktop files`);
         console.error(`  --prerender    Add gh-pages prerender via b-on-g/mol-prerender-action (off)`);
         console.error(`  --seo          Add $bog_seo runtime (pathname router + sitemap + robots + llms + meta inject) (off)`);
+        console.error(`  --backend      Add $mol_server REST backend with node:sqlite storage and shared TS item type (off)`);
         process.exit(1);
     }
     const { segments, app_path, project_path } = parse_input(raw);
@@ -121,6 +127,8 @@ function create(args) {
         skipped.push('prerender');
     if (!options.seo)
         skipped.push('seo');
+    if (!options.backend)
+        skipped.push('backend');
     console.log(`\nCreating $mol project: ${$app}`);
     console.log(`Path: ${project_path}/`);
     if (skipped.length)
@@ -141,7 +149,8 @@ function create(args) {
 		<meta property="og:type" content="website" />
 		<meta property="og:description" content="${name}" />
 		<meta property="og:site_name" content="${name}" />
-		<meta property="og:url" content="${gh_pages_url}" />
+		<meta property="og:url" content="${gh_pages_url}" />${options.backend ? `
+		<meta name="api-base" content="" />` : ''}
 		<link rel="manifest" href="manifest.json" />
 	</head>
 	<body mol_view_root>
@@ -155,6 +164,9 @@ function create(args) {
 deploy \\/${asset_path}/assets
 ${options.seo ? `pack bog/builderui/router
 pack bog/meta
+` : ''}${options.backend ? `pack mol/fetch
+pack mol/dom
+pack ${project_path}/item
 ` : ''}`);
     // ── app.view.tree ──
     const baza_tools = options.baza ? `\n\t\t<= Status $giper_baza_status` : '';
@@ -168,7 +180,11 @@ pack bog/meta
 					text \\
 						\\# ${name}
 						\\
-						\\Welcome to your new $mol app.
+						\\Welcome to your new $mol app.${options.backend ? `
+				<= Items_count $mol_view
+					sub /
+						\\Items in API:
+						<= items_count \\—` : ''}
 	nav_options *
 		home \\Home
 	Navbar $mol_switch
@@ -217,6 +233,28 @@ pack bog/meta
 		}
 `
         : '';
+    const backend_methods = options.backend
+        ? `
+		api_base() {
+			const meta = $mol_dom.document.querySelector( 'meta[name="api-base"]' ) as HTMLMetaElement | null
+			const explicit = meta?.content?.trim()
+			if( explicit ) return explicit
+			// dev fallback: app on :9080 (mam dev) → api on :9092
+			const loc = $mol_dom.location
+			if( loc?.port === '9080' ) return 'http://localhost:9092'
+			return ''
+		}
+
+		@ $mol_mem
+		items(): readonly ${$}_item[] {
+			return this.$.$mol_fetch.json( this.api_base() + '/api/items' ) as readonly ${$}_item[]
+		}
+
+		items_count() {
+			return String( this.items().length )
+		}
+`
+        : '';
     write(path.join(cwd, app_path, 'app.view.ts'), `namespace $.$$ {
 
 	export class ${$app} extends $.${$app} {
@@ -233,7 +271,7 @@ ${seo_static}
 			const page = ( pages as any )[ screen ]
 			return page ? [ page ] : []
 		}
-${seo_meta}
+${seo_meta}${backend_methods}
 	}
 
 }
@@ -295,6 +333,143 @@ ${seo_meta}
 		}
 
 	}
+
+}
+`);
+    }
+    // ── api/ (REST backend on $mol_server + node:sqlite, shared TS type) ──
+    if (options.backend) {
+        write(path.join(cwd, project_path, 'item', 'item.ts'), `namespace $ {
+
+	export interface ${$}_item {
+		id: string
+		title: string
+		body: string
+		created_at: number
+	}
+
+}
+`);
+        write(path.join(cwd, project_path, 'api', 'api.meta.tree'), `pack mol/server
+pack ${project_path}/item
+`);
+        write(path.join(cwd, project_path, 'api', 'api.node.ts'), `namespace $ {
+
+	type Sqlite = typeof import( 'node:sqlite' )
+	type SqliteDB = InstanceType< Sqlite[ 'DatabaseSync' ] >
+
+	/**
+	 * SQL migrations. Append-only — never edit or remove past entries after deploy.
+	 * Current schema version is stored in PRAGMA user_version and only newer
+	 * migrations get applied.
+	 */
+	const migrations: Array< ( db: SqliteDB )=> void > = [
+		db => db.exec( \`
+			CREATE TABLE items (
+				id TEXT PRIMARY KEY,
+				title TEXT NOT NULL,
+				body TEXT NOT NULL,
+				created_at INTEGER NOT NULL
+			)
+		\` ),
+	]
+
+	function migrate( db: SqliteDB ) {
+		const row = db.prepare( 'PRAGMA user_version' ).get() as { user_version: number } | undefined
+		const current = row?.user_version ?? 0
+		for( let i = current; i < migrations.length; i++ ) {
+			db.exec( 'BEGIN' )
+			try {
+				migrations[ i ]!( db )
+				db.exec( \`PRAGMA user_version = \${ i + 1 }\` )
+				db.exec( 'COMMIT' )
+			} catch( error ) {
+				db.exec( 'ROLLBACK' )
+				throw error
+			}
+		}
+	}
+
+	export class ${$}_api extends $mol_server {
+
+		override port() {
+			return Number( process.env.${name.toUpperCase().replace(/-/g, '_')}_API_PORT ?? 9092 )
+		}
+
+		db_path() {
+			return process.env.${name.toUpperCase().replace(/-/g, '_')}_DB_PATH ?? '${project_path}/api/${name}.sqlite'
+		}
+
+		@ $mol_mem
+		db(): SqliteDB {
+			const sqlite = $node[ 'node:sqlite' ] as Sqlite
+			const db = new sqlite.DatabaseSync( this.db_path() )
+			migrate( db )
+			return db
+		}
+
+		items(): ${$}_item[] {
+			return this.db()
+				.prepare( 'SELECT id, title, body, created_at FROM items ORDER BY created_at DESC' )
+				.all() as unknown as ${$}_item[]
+		}
+
+		item_add( input: { title: string, body: string } ): ${$}_item {
+			const id = \`\${ Date.now() }_\${ Math.random().toString( 36 ).slice( 2, 10 ) }\`
+			const created_at = Date.now()
+			this.db()
+				.prepare( 'INSERT INTO items (id, title, body, created_at) VALUES (?, ?, ?, ?)' )
+				.run( id, input.title, input.body, created_at )
+			return { id, title: input.title, body: input.body, created_at }
+		}
+
+		item_delete( id: string ) {
+			this.db().prepare( 'DELETE FROM items WHERE id = ?' ).run( id )
+			return { ok: true }
+		}
+
+		override expressHandlers(): readonly $mol_server_middleware[] {
+			return [
+				this.expressCors(),
+				this.expressCompressor(),
+				this.expressBodier(),
+				this.expressApi(),
+			]
+		}
+
+		expressApi(): $mol_server_middleware {
+			return ( req, res, next ) => {
+				if( req.method === 'GET' && req.path === '/api/items' ) {
+					res.json( this.items() )
+					return
+				}
+				if( req.method === 'POST' && req.path === '/api/items' ) {
+					const body = req.body as { title?: string, body?: string }
+					if( !body?.title ) {
+						res.status( 400 ).json({ error: 'title required' })
+						return
+					}
+					res.json( this.item_add({ title: body.title, body: body.body ?? '' }) )
+					return
+				}
+				if( req.method === 'DELETE' && req.path.startsWith( '/api/items/' ) ) {
+					const id = req.path.slice( '/api/items/'.length )
+					res.json( this.item_delete( id ) )
+					return
+				}
+				next()
+			}
+		}
+
+	}
+
+}
+`);
+        write(path.join(cwd, project_path, 'api', 'api.run.node.ts'), `namespace $ {
+
+	setTimeout( ()=> {
+		new ${$}_api().http()
+	} )
 
 }
 `);
@@ -459,7 +634,7 @@ fn main() {
     }
     // ── Docker ──
     if (options.docker) {
-        write(path.join(cwd, project_path, 'Dockerfile'), `FROM node:20-alpine AS build
+        write(path.join(cwd, project_path, 'Dockerfile'), `FROM node:24-alpine AS build
 WORKDIR /app
 RUN git clone --depth 1 https://github.com/hyoo-ru/mam.git . \\
     && npm install
@@ -468,14 +643,50 @@ RUN npx mam ${project_path}
 
 FROM nginx:alpine
 COPY --from=build /app/${project_path}/- /usr/share/nginx/html
-EXPOSE 80
+${options.backend || options.seo ? `COPY nginx.conf /etc/nginx/conf.d/default.conf
+` : ''}EXPOSE 80
 `);
+        if (options.backend || options.seo) {
+            const api_proxy = options.backend ? `
+    location /api/ {
+        proxy_pass http://api:9092;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+` : '';
+            write(path.join(cwd, project_path, 'nginx.conf'), `server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+${api_proxy}
+    # SPA fallback — any unknown path under the app falls back to index.html.
+    # Required for pathname-router (--seo) and any client-side routing.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+`);
+        }
         write(path.join(cwd, project_path, 'docker-compose.yml'), `services:
   web:
     build: .
     ports:
-      - "8080:80"
-${options.seo ? `  seo:
+      - "8080:80"${options.backend ? `
+    depends_on:
+      - api` : ''}
+${options.backend ? `  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      ${name.toUpperCase().replace(/-/g, '_')}_DB_PATH: /data/${name}.sqlite
+    volumes:
+      - api-data:/data
+    ports:
+      - "9092:9092"
+` : ''}${options.seo ? `  seo:
     build:
       context: .
       dockerfile: Dockerfile.seo
@@ -487,9 +698,12 @@ ${options.seo ? `  seo:
       - web
     ports:
       - "3334:3334"
+` : ''}${options.backend ? `
+volumes:
+  api-data:
 ` : ''}`);
         if (options.seo) {
-            write(path.join(cwd, project_path, 'Dockerfile.seo'), `FROM node:20-alpine
+            write(path.join(cwd, project_path, 'Dockerfile.seo'), `FROM node:24-alpine
 WORKDIR /app
 RUN apk add --no-cache git chromium nss ca-certificates ttf-freefont \\
     && git clone --depth 1 https://github.com/hyoo-ru/mam.git . \\
@@ -499,6 +713,23 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 EXPOSE 3334
 CMD ["node", "bog/seo/-/node.js"]
+`);
+        }
+        if (options.backend) {
+            write(path.join(cwd, project_path, 'Dockerfile.api'), `FROM node:24-alpine AS build
+WORKDIR /app
+RUN apk add --no-cache git python3 make g++ \\
+    && git clone --depth 1 https://github.com/hyoo-ru/mam.git . \\
+    && npm install
+COPY . ${project_path}/
+RUN npx mam ${project_path}/api
+
+FROM node:24-alpine
+WORKDIR /app
+COPY --from=build /app/${project_path}/api/- /app/${project_path}/api/-
+RUN mkdir -p /data
+EXPOSE 9092
+CMD ["node", "${project_path}/api/-/node.js"]
 `);
         }
     }
@@ -512,6 +743,30 @@ docker compose up --build
 # Open http://localhost:8080
 ${options.seo ? `# Bots → http://localhost:3334 (SEO prerender)
 ` : ''}\`\`\`
+`
+        : '';
+    const backend_section = options.backend
+        ? `
+## REST API ($mol_server + node:sqlite)
+
+Backend in \`${project_path}/api/\` — \`${$}_api extends $mol_server\`. Single shared TS type \`${$}_item\` lives in \`${project_path}/item/item.ts\` and is imported by both the REST handler (return type) and the frontend (response type).
+
+Storage: \`node:sqlite\` (built-in to Node.js 22+, no extra dependency). DB file: \`${project_path}/api/${name}.sqlite\`.
+
+### Endpoints
+
+- \`GET /api/items\` → \`${$}_item[]\`
+- \`POST /api/items\` body \`{title, body}\` → \`${$}_item\`
+- \`DELETE /api/items/<id>\` → \`{ok: true}\`
+
+### Run
+
+\`\`\`bash
+npx mam ${project_path}/api
+node ${project_path}/api/-/node.js
+# default port 9092, override: ${name.toUpperCase().replace(/-/g, '_')}_API_PORT
+# default db path: ${project_path}/api/${name}.sqlite, override: ${name.toUpperCase().replace(/-/g, '_')}_DB_PATH
+\`\`\`
 `
         : '';
     const seo_section = options.seo
@@ -579,11 +834,13 @@ ${docker_section}
 Push to \`main\` → GitHub Actions → GitHub Pages: ${gh_pages_url}
 
 Feature branches deploy to: ${gh_pages_url}{branch-name}/
-${seo_section}${tauri_section}`);
+${backend_section}${seo_section}${tauri_section}`);
     // ── .gitignore ──
     write(path.join(cwd, project_path, '.gitignore'), `-*
 .DS_Store
-`);
+${options.backend ? `*.sqlite
+*.sqlite-journal
+` : ''}`);
     // ── .gitattributes ──
     write(path.join(cwd, project_path, '.gitattributes'), `* -text
 `);
