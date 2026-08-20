@@ -5,7 +5,7 @@ const args = process.argv.slice(2)
 const command = args[0]
 
 // CLI commands route to cli module
-const cliCommands = ['create', 'help', '--help', '-h']
+const cliCommands = ['create', 'locale', 'help', '--help', '-h']
 
 if (cliCommands.includes(command)) {
 	const cliPath = path.join(__dirname, '..', 'out', 'cli', 'index.js')
