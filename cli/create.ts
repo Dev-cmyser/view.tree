@@ -1,38 +1,53 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-interface CreateOptions {
-	docker: boolean
-	baza: boolean
-	tauri: boolean
-	prerender: boolean
-	seo: boolean
-	backend: boolean
+/**
+ * Что скаффолдер умеет положить в проект. Одно правило на все: включено, пока не
+ * отказались. Раньше половина флагов работала наоборот — `--no-baza` выключал,
+ * а `--backend` включал, — и держать в голове, какой из них какой, было нечем.
+ * Порядок здесь задаёт порядок в справке.
+ */
+const FLAGS = {
+	docker: 'Docker files',
+	baza: 'Giper Baza local-first store',
+	tauri: 'Tauri desktop shell',
+	backend: '$mol_server REST backend with node:sqlite storage and shared TS item type',
+	prerender: 'gh-pages prerender via b-on-g/mol-prerender-action',
+	seo: '$bog_seo runtime: pathname router + sitemap + robots + llms + meta inject',
+} as const
+
+type CreateOptions = Record<keyof typeof FLAGS, boolean>
+
+function flag_names() {
+	return Object.keys(FLAGS) as Array<keyof typeof FLAGS>
 }
 
 function parse_flags(args: string[]): { raw: string; options: CreateOptions } {
-	const options: CreateOptions = {
-		docker: true,
-		baza: true,
-		tauri: true,
-		prerender: false,
-		seo: false,
-		backend: false,
-	}
+	const options = Object.fromEntries(flag_names().map(name => [name, true])) as CreateOptions
 
 	let raw = ''
 
 	for (const arg of args) {
-		if (arg === '--no-docker') options.docker = false
-		else if (arg === '--no-baza') options.baza = false
-		else if (arg === '--no-tauri') options.tauri = false
-		else if (arg === '--no-prerender') options.prerender = false
-		else if (arg === '--prerender') options.prerender = true
-		else if (arg === '--no-seo') options.seo = false
-		else if (arg === '--seo') options.seo = true
-		else if (arg === '--no-backend') options.backend = false
-		else if (arg === '--backend') options.backend = true
-		else if (!arg.startsWith('--')) raw = raw || arg
+		if (arg === '--help' || arg === '-h') return { raw: '', options }
+
+		if (!arg.startsWith('--')) {
+			raw = raw || arg
+			continue
+		}
+
+		const off = arg.startsWith('--no-')
+		const name = arg.slice(off ? 5 : 2) as keyof typeof FLAGS
+
+		// Опечатка в флаге не должна молча выдавать проект с чем-то лишним:
+		// `--no-bazaa` раньше просто игнорировался, и Baza приезжала как ни в чём
+		// не бывало.
+		if (!(name in FLAGS)) {
+			console.error(`Error: unknown flag ${arg}`)
+			console.error(`Known flags: ${flag_names().map(f => `--no-${f}`).join(', ')}`)
+			process.exit(1)
+		}
+
+		options[name] = !off
 	}
 
 	return { raw, options }
@@ -61,6 +76,40 @@ function prefix(segments: string[]): string {
 	return '$' + segments.join('_')
 }
 
+/**
+ * Проект имеет смысл только внутри воркспейса MAM: пути модулей отсчитываются от
+ * его корня, а откуда тянуть `mol` и прочие пакеты, знает корневой `.meta.tree`.
+ * Сгенерировать можно где угодно, а собрать — только там, поэтому говорим сразу,
+ * а не оставляем человека выяснять это на первом `npx mam`.
+ */
+function check_workspace(cwd: string) {
+	const meta = path.join(cwd, '.meta.tree')
+	if (fs.existsSync(meta) && /^pack\s+\S+\s+git\s/m.test(fs.readFileSync(meta, 'utf8'))) return true
+
+	// В package.json воркспейса MAM сборщик засветится в скриптах, зависимостях
+	// или ключевых словах — этого хватает, чтобы не пугать зря.
+	const pkg_path = path.join(cwd, 'package.json')
+	if (fs.existsSync(pkg_path)) {
+		try {
+			const pkg = JSON.parse(fs.readFileSync(pkg_path, 'utf8'))
+			const haystack = JSON.stringify([pkg.scripts, pkg.dependencies, pkg.devDependencies, pkg.keywords])
+			if (/\bmam\b/.test(haystack)) return true
+		} catch {
+			// битый package.json — считаем, что признака нет
+		}
+	}
+
+	console.error(`Warning: this does not look like a MAM workspace.`)
+	console.error(`         No .meta.tree with pack lines here, and no mam in package.json.`)
+	console.error(`         Module paths are resolved from the MAM root, so the project belongs inside it:`)
+	console.error(``)
+	console.error(`           git clone https://github.com/hyoo-ru/mam.git`)
+	console.error(`           cd mam`)
+	console.error(`           npx create-view-tree-lsp <namespace/name>`)
+	console.error(``)
+	return false
+}
+
 function write(filepath: string, content: string) {
 	const dir = path.dirname(filepath)
 	fs.mkdirSync(dir, { recursive: true })
@@ -74,13 +123,11 @@ export function create(args: string[]) {
 	if (!raw) {
 		console.error(`Usage: view-tree-lsp create <namespace/name> [flags]`)
 		console.error(``)
-		console.error(`Flags:`)
-		console.error(`  --no-docker    Skip Docker files`)
-		console.error(`  --no-baza      Skip Giper Baza store`)
-		console.error(`  --no-tauri     Skip Tauri desktop files`)
-		console.error(`  --prerender    Add gh-pages prerender via b-on-g/mol-prerender-action (off)`)
-		console.error(`  --seo          Add $bog_seo runtime (pathname router + sitemap + robots + llms + meta inject) (off)`)
-		console.error(`  --backend      Add $mol_server REST backend with node:sqlite storage and shared TS item type (off)`)
+		console.error(`Everything below is included by default. Skip what you do not need:`)
+		const width = Math.max(...flag_names().map(name => name.length))
+		for (const name of flag_names()) {
+			console.error(`  --no-${name.padEnd(width)}  Skip ${FLAGS[name]}`)
+		}
 		process.exit(1)
 	}
 
@@ -94,18 +141,22 @@ export function create(args: string[]) {
 	const asset_path = project_path
 
 	const cwd = process.cwd()
+	check_workspace(cwd)
 
-	const skipped: string[] = []
-	if (!options.docker) skipped.push('docker')
-	if (!options.baza) skipped.push('baza')
-	if (!options.tauri) skipped.push('tauri')
-	if (!options.prerender) skipped.push('prerender')
-	if (!options.seo) skipped.push('seo')
-	if (!options.backend) skipped.push('backend')
+	const skipped = flag_names().filter(name => !options[name])
 
 	console.log(`\nCreating $mol project: ${$app}`)
 	console.log(`Path: ${project_path}/`)
 	if (skipped.length) console.log(`Skipping: ${skipped.join(', ')}`)
+
+	// Оба пишут в `app/-` на теге, и `cp -rn` оставлял версию пререндера, тихо
+	// выбрасывая sitemap и per-page мету от $bog_seo. Это не выбор пользователя,
+	// а молчаливая потеря, поэтому в паре побеждает тот, кто умеет больше.
+	if (options.prerender && options.seo) {
+		console.log(`Note: $bog_seo covers what the prerender action does, so only its step goes into deploy.yml.`)
+		console.log(`      Pass --no-seo to use the prerender action instead.`)
+	}
+
 	console.log(``)
 
 	// ── index.html ──
@@ -545,7 +596,7 @@ jobs:
               with:
                   folder: "${project_path}/-"
                   target-folder: \${{ github.ref_name }}
-${options.prerender ? `
+${options.prerender && !options.seo ? `
             - uses: b-on-g/mol-prerender-action@main
               if: startsWith(github.ref, 'refs/tags/')
               continue-on-error: true
