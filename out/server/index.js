@@ -56,15 +56,28 @@ const styleWs_1 = require("./styleWs");
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 const trees = new Map();
-let workspaceRootFs = '';
+let workspaceRoots = [];
 const log = (msg) => {
     connection.console.log(msg);
 };
+function rootFor(uri) {
+    const fsPath = (0, resolver_1.uriToFsPath)(uri);
+    const text = documents.get(uri)?.getText() ?? '';
+    const first = text.replace(/^﻿/, '').split(/\r?\n/)[0]?.trim().split(/\s+/)[0] || '';
+    if (first) {
+        const rel = (0, resolver_1.classNameToRelPath)(first.startsWith('$') ? first : '$' + first);
+        if (fsPath.endsWith(rel))
+            return fsPath.slice(0, -rel.length).replace(/[\\/]$/, '');
+    }
+    const sep = require('path').sep;
+    const inside = workspaceRoots.find(root => fsPath.startsWith(root + sep));
+    return inside ?? workspaceRoots[0] ?? '';
+}
 connection.onInitialize((params) => {
     const ws = params.workspaceFolders?.map(f => f.uri).join(', ') || params.rootUri || 'unknown';
     log(`[view.tree] onInitialize: workspace=${ws}`);
-    const rootUri = params.workspaceFolders?.[0]?.uri || params.rootUri || '';
-    workspaceRootFs = rootUri ? (0, resolver_1.uriToFsPath)(rootUri) : '';
+    const rootUris = params.workspaceFolders?.map(f => f.uri) ?? (params.rootUri ? [params.rootUri] : []);
+    workspaceRoots = rootUris.map(resolver_1.uriToFsPath);
     return {
         capabilities: {
             textDocumentSync: {
@@ -161,6 +174,7 @@ documents.onDidChangeContent(async (change) => {
     }
     // Recursively load dependencies (class references) from workspace
     try {
+        const workspaceRootFs = rootFor(uri);
         if (workspaceRootFs && parsed) {
             const refs = (0, deps_1.extractClassRefs)(parsed);
             await (0, deps_1.loadDependencies)(workspaceRootFs, refs, trees, indexer_1.updateIndexForDoc, 50, msg => log(msg));
@@ -185,14 +199,14 @@ connection.onInitialized(async () => {
     const port = Number(process.env.MOL_STYLE_WS ?? 7531);
     if (port > 0)
         (0, styleWs_1.startStyleWs)(port, log);
-    if (!workspaceRootFs)
-        return;
-    try {
-        log(`[scan] start root=${workspaceRootFs}`);
-        await (0, scan_1.scanProject)(workspaceRootFs, trees, indexer_1.updateIndexForDoc, log);
-    }
-    catch (e) {
-        log(`[scan] failed: ${e?.message || e}`);
+    for (const workspaceRootFs of workspaceRoots) {
+        try {
+            log(`[scan] start root=${workspaceRootFs}`);
+            await (0, scan_1.scanProject)(workspaceRootFs, trees, indexer_1.updateIndexForDoc, log);
+        }
+        catch (e) {
+            log(`[scan] failed: ${e?.message || e}`);
+        }
     }
 });
 connection.onCompletion(params => {
@@ -226,6 +240,7 @@ connection.onHover(async (params) => {
     if ((0, resolver_1.classLike)(token)) {
         // Prefer properties strictly from .view.tree
         let props = (0, indexer_1.getComponentPropsFromViewTree)(token);
+        const workspaceRootFs = rootFor(uri);
         if ((!props || props.length === 0) && workspaceRootFs) {
             try {
                 const rel = (0, resolver_1.classNameToRelPath)(token);
@@ -311,6 +326,7 @@ connection.onDefinition(async (params) => {
         .split(/\s+/)[0] || '';
     const className = firstToken ? (firstToken.startsWith('$') ? firstToken : '$' + firstToken) : '';
     const isRootClassToken = params.position.line === 0 && token === firstToken;
+    const workspaceRootFs = rootFor(uri);
     async function toFsLocation(fsPath, line, colStart = 0, len = 0) {
         const uri2 = (0, resolver_1.fsPathToUri)(fsPath);
         return {
