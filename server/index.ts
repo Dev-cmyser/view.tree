@@ -54,16 +54,29 @@ const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 const trees = new Map<string, Ast>()
 
-let workspaceRootFs = ''
+let workspaceRoots = [] as string[]
 const log = (msg: string) => {
 	connection.console.log(msg)
+}
+
+function rootFor(uri: string): string {
+	const fsPath = uriToFsPath(uri)
+	const text = documents.get(uri)?.getText() ?? ''
+	const first = text.replace(/^﻿/, '').split(/\r?\n/)[0]?.trim().split(/\s+/)[0] || ''
+	if (first) {
+		const rel = classNameToRelPath(first.startsWith('$') ? first : '$' + first)
+		if (fsPath.endsWith(rel)) return fsPath.slice(0, -rel.length).replace(/[\\/]$/, '')
+	}
+	const sep = require('path').sep
+	const inside = workspaceRoots.find(root => fsPath.startsWith(root + sep))
+	return inside ?? workspaceRoots[0] ?? ''
 }
 
 connection.onInitialize((params: InitializeParams) => {
 	const ws = params.workspaceFolders?.map(f => f.uri).join(', ') || params.rootUri || 'unknown'
 	log(`[view.tree] onInitialize: workspace=${ws}`)
-	const rootUri = params.workspaceFolders?.[0]?.uri || params.rootUri || ''
-	workspaceRootFs = rootUri ? uriToFsPath(rootUri) : ''
+	const rootUris = params.workspaceFolders?.map(f => f.uri) ?? (params.rootUri ? [params.rootUri] : [])
+	workspaceRoots = rootUris.map(uriToFsPath)
 	return {
 		capabilities: {
 			textDocumentSync: {
@@ -160,6 +173,7 @@ documents.onDidChangeContent(async change => {
 
 	// Recursively load dependencies (class references) from workspace
 	try {
+		const workspaceRootFs = rootFor(uri)
 		if (workspaceRootFs && parsed) {
 			const refs = extractClassRefs(parsed as any)
 			await loadDependencies(workspaceRootFs, refs, trees as any, updateIndexForDoc, 50, msg => log(msg))
@@ -183,12 +197,13 @@ connection.onInitialized(async () => {
 	// Start the WebSocket endpoint first so the extension can connect even while we're still scanning.
 	const port = Number(process.env.MOL_STYLE_WS ?? 7531)
 	if (port > 0) startStyleWs(port, log)
-	if (!workspaceRootFs) return
-	try {
-		log(`[scan] start root=${workspaceRootFs}`)
-		await scanProject(workspaceRootFs, trees as any, updateIndexForDoc, log)
-	} catch (e: any) {
-		log(`[scan] failed: ${e?.message || e}`)
+	for (const workspaceRootFs of workspaceRoots) {
+		try {
+			log(`[scan] start root=${workspaceRootFs}`)
+			await scanProject(workspaceRootFs, trees as any, updateIndexForDoc, log)
+		} catch (e: any) {
+			log(`[scan] failed: ${e?.message || e}`)
+		}
 	}
 })
 
@@ -226,6 +241,7 @@ connection.onHover(async params => {
 	if (classLike(token)) {
 		// Prefer properties strictly from .view.tree
 		let props = getComponentPropsFromViewTree(token)
+		const workspaceRootFs = rootFor(uri)
 		if ((!props || props.length === 0) && workspaceRootFs) {
 			try {
 				const rel = classNameToRelPath(token)
@@ -312,6 +328,7 @@ connection.onDefinition(async params => {
 			.split(/\s+/)[0] || ''
 	const className = firstToken ? (firstToken.startsWith('$') ? firstToken : '$' + firstToken) : ''
 	const isRootClassToken = params.position.line === 0 && token === firstToken
+	const workspaceRootFs = rootFor(uri)
 
 	async function toFsLocation(fsPath: string, line: number, colStart = 0, len = 0): Promise<Location> {
 		const uri2 = fsPathToUri(fsPath)
