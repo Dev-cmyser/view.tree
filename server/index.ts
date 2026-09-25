@@ -49,12 +49,14 @@ import { sanitizeLineSpaces } from './format'
 import { extractTsProps } from './tsProps'
 import { indexStyleFile, removeStyleEntriesForUri } from './styleIndex'
 import { startStyleWs } from './styleWs'
+import { documentSymbols, bindingHints, flowMarkdown, findDepsDir } from './flow'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
 const trees = new Map<string, Ast>()
 
 let workspaceRoots = [] as string[]
+let canShowDocument = false
 const log = (msg: string) => {
 	connection.console.log(msg)
 }
@@ -77,6 +79,7 @@ connection.onInitialize((params: InitializeParams) => {
 	log(`[view.tree] onInitialize: workspace=${ws}`)
 	const rootUris = params.workspaceFolders?.map(f => f.uri) ?? (params.rootUri ? [params.rootUri] : [])
 	workspaceRoots = rootUris.map(uriToFsPath)
+	canShowDocument = !!params.capabilities.window?.showDocument?.support
 	return {
 		capabilities: {
 			textDocumentSync: {
@@ -113,6 +116,9 @@ connection.onInitialize((params: InitializeParams) => {
 				full: true,
 			},
 			hoverProvider: true,
+			documentSymbolProvider: true,
+			inlayHintProvider: true,
+			executeCommandProvider: { commands: ['viewtree.flow'] },
 		},
 	}
 })
@@ -444,9 +450,14 @@ connection.onCodeAction(params => {
 	const uri = params.textDocument.uri
 	const doc = documents.get(uri)
 	if (!doc) return []
+	const flow: CodeAction = {
+		title: 'Поток модуля',
+		kind: CodeActionKind.Source,
+		command: { title: 'Поток модуля', command: 'viewtree.flow', arguments: [uri] },
+	}
 	const original = doc.getText()
 	const formatted = formatText(original, uri)
-	if (formatted === original) return []
+	if (formatted === original) return [flow]
 	const edit: TextEdit = {
 		range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
 		newText: formatted,
@@ -457,7 +468,45 @@ connection.onCodeAction(params => {
 		edit: { changes: { [uri]: [edit] } },
 		isPreferred: true,
 	}
-	return [action]
+	return [action, flow]
+})
+
+connection.onDocumentSymbol(params => {
+	const doc = documents.get(params.textDocument.uri)
+	if (!doc || !/\.view\.tree$/.test(params.textDocument.uri)) return []
+	return documentSymbols(doc.getText())
+})
+
+connection.languages.inlayHint.on(async params => {
+	const uri = params.textDocument.uri
+	const doc = documents.get(uri)
+	if (!doc || !/\.view\.tree$/.test(uri)) return []
+	const tsFs = uriToFsPath(uri).replace(/\.tree$/, '.ts')
+	const overridden = new Set<string>()
+	try {
+		for (const props of extractTsProps(await fs.readFile(tsFs, 'utf8')).values()) for (const p of props) overridden.add(p)
+	} catch {}
+	const hints = bindingHints(doc.getText(), overridden, require('path').basename(tsFs))
+	return hints.filter(h => h.position.line >= params.range.start.line && h.position.line <= params.range.end.line)
+})
+
+connection.onExecuteCommand(async params => {
+	if (params.command !== 'viewtree.flow') return null
+	const uri = String(params.arguments?.[0] ?? '')
+	const path = require('path') as typeof import('path')
+	const root = rootFor(uri)
+	const dir = root ? findDepsDir(uriToFsPath(uri), root) : null
+	if (!dir) {
+		connection.window.showWarningMessage('Нет -/web.deps.json: соберите модуль, потом повторите')
+		return null
+	}
+	const deps = JSON.parse(await fs.readFile(path.join(dir, '-', 'web.deps.json'), 'utf8'))
+	const target = path.join(dir, '-', 'flow.md')
+	await fs.writeFile(target, flowMarkdown(path.relative(root, dir).split(path.sep).join('/'), deps))
+	log(`[flow] written ${target}`)
+	if (canShowDocument) await connection.window.showDocument({ uri: fsPathToUri(target), takeFocus: true })
+	else connection.window.showInformationMessage(`Поток записан в ${target}`)
+	return null
 })
 
 // Format-on-save via WillSaveWaitUntil
