@@ -112,7 +112,7 @@ function extractPropsFromClassBody(body: string): string[] {
 
     // Remove single-line comments and strings for brace-count stability
     line = stripLineComments(line)
-    const lineForBrace = stripStrings(line)
+    const lineForBrace = stripLineComments(stripStrings(lines[i]))
 
     // Current line is considered at 'depth' before updating it with this line's braces.
     if (depth === 1) {
@@ -205,7 +205,7 @@ function stripStrings(s: string): string {
 
 function stripBlockComments(s: string): string {
   // Non-greedy remove of /* ... */ blocks
-  return s.replace(/\/\*[\s\S]*?\*\//g, '')
+  return s.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
 }
 
 /**

@@ -477,16 +477,29 @@ connection.languages.inlayHint.on(async (params) => {
     const doc = documents.get(uri);
     if (!doc || !/\.view\.tree$/.test(uri))
         return [];
+    const path = require('path');
+    const read = (file) => fs.readFile(file, 'utf8').catch(() => undefined);
     const tsFs = (0, resolver_1.uriToFsPath)(uri).replace(/\.tree$/, '.ts');
-    const overridden = new Set();
-    try {
-        for (const props of (0, tsProps_1.extractTsProps)(await fs.readFile(tsFs, 'utf8')).values())
-            for (const p of props)
-                overridden.add(p);
-    }
-    catch { }
-    const hints = (0, flow_1.bindingHints)(doc.getText(), overridden, require('path').basename(tsFs));
-    return hints.filter(h => h.position.line >= params.range.start.line && h.position.line <= params.range.end.line);
+    const tsText = await read(tsFs);
+    const own = { ts: tsText ? (0, tsProps_1.extractTsProps)(tsText) : new Map(), tsFile: path.basename(tsFs) };
+    const root = rootFor(uri);
+    const load = async (cls) => {
+        const parts = cls.replace(/^\$/, '').split('_');
+        const last = parts[parts.length - 1];
+        for (const dir of [path.join(root, ...parts), path.join(root, ...parts, last)]) {
+            const tree = await read(path.join(dir, `${last}.view.tree`));
+            for (const name of [`${last}.view.ts`, `${last}.ts`, `${last}.view.tsx`, `${last}.tsx`]) {
+                const text = await read(path.join(dir, name));
+                const ts = text ? (0, tsProps_1.extractTsProps)(text).get(cls) : undefined;
+                if (ts)
+                    return { tree, ts, tsFile: name };
+            }
+            if (tree)
+                return { tree };
+        }
+        return {};
+    };
+    return (0, flow_1.bindingHints)(doc.getText(), own, load, { start: params.range.start.line, end: params.range.end.line });
 });
 connection.onExecuteCommand(async (params) => {
     if (params.command !== 'viewtree.flow')

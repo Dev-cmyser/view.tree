@@ -108,7 +108,7 @@ function extractPropsFromClassBody(body) {
         let line = lines[i];
         // Remove single-line comments and strings for brace-count stability
         line = stripLineComments(line);
-        const lineForBrace = stripStrings(line);
+        const lineForBrace = stripLineComments(stripStrings(lines[i]));
         // Current line is considered at 'depth' before updating it with this line's braces.
         if (depth === 1) {
             // Attempt to match class members (methods, accessors, fields) declared at top-level.
@@ -189,7 +189,7 @@ function stripStrings(s) {
 }
 function stripBlockComments(s) {
     // Non-greedy remove of /* ... */ blocks
-    return s.replace(/\/\*[\s\S]*?\*\//g, '');
+    return s.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '));
 }
 /**
  * Utility to merge multiple TsComponentProps maps into one.

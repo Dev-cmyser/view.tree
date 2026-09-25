@@ -79,21 +79,94 @@ function nameColumn(tokens: string[], col: number, name: string) {
 	return col
 }
 
-export function bindingHints(text: string, overridden: Set<string>, tsFile: string): InlayHint[] {
-	const lines = readLines(text)
-	const cls = lines[0]?.tokens[0]?.replace(/^﻿/, '') ?? ''
-	if (!cls) return []
-	const hints: InlayHint[] = []
-	for (const { line, depth, size, tokens } of lines) {
-		if (depth === 0 || !tokens.length || tokens[0] === '-') continue
+export type ClassSource = { tree?: string; ts?: Set<string>; tsFile?: string }
+
+const propName = (token: string) => token.replace(/^﻿/, '').replace(/[?*].*$/, '')
+
+const shorten = (value: string) => (value.length > 40 ? value.slice(0, 39) + '…' : value)
+
+function classBlocks(lines: Line[]) {
+	const blocks = new Map<string, Line[]>()
+	let current: Line[] | null = null
+	for (const l of lines) {
+		if (!l.tokens.length) continue
+		if (l.depth === 0) {
+			current = l.tokens[0] === '-' ? null : []
+			if (current) blocks.set(propName(l.tokens[0]), current)
+		}
+		if (current) current.push(l)
+	}
+	return blocks
+}
+
+function declarations(block: Line[]) {
+	const out = new Map<string, string>()
+	let skip = -1
+	for (const { depth, tokens } of block.slice(1)) {
+		if (skip >= 0 && depth > skip) continue
+		skip = -1
+		if (tokens[0] === '-') {
+			skip = depth
+			continue
+		}
+		if (depth === 1 && !out.has(propName(tokens[0]))) out.set(propName(tokens[0]), tokens.slice(1).join(' '))
 		const at = tokens.findIndex(t => t === '<=' || t === '<=>')
-		if (at < 0 || !tokens[at + 1]) continue
-		if (at === 0 && tokens.length > 2) continue
-		const prop = tokens[at + 1].replace(/[?*]$/, '')
-		const label = overridden.has(prop) ? `← перекрыто в ${tsFile}` : `← ${cls}.${prop}`
-		hints.push({ position: { line, character: size }, label, paddingLeft: true })
+		if (at >= 0 && tokens[at + 1] && tokens.length > at + 2) {
+			const name = propName(tokens[at + 1])
+			if (!out.has(name)) out.set(name, tokens.slice(at + 2).join(' '))
+		}
+	}
+	return out
+}
+
+export async function bindingHints(
+	text: string,
+	own: { ts: Map<string, Set<string>>; tsFile: string },
+	load: (cls: string) => Promise<ClassSource>,
+	range?: { start: number; end: number },
+): Promise<InlayHint[]> {
+	const blocks = classBlocks(readLines(text))
+	const hints: InlayHint[] = []
+	for (const [cls, block] of blocks) {
+		const declared = declarations(block)
+		const base = block[0].tokens[1]
+		for (const { line, depth, size, tokens } of block) {
+			if (depth === 0 || tokens[0] === '-') continue
+			if (range && (line < range.start || line > range.end)) continue
+			const at = tokens.findIndex(t => t === '<=' || t === '<=>')
+			if (at < 0 || !tokens[at + 1]) continue
+			const prop = propName(tokens[at + 1])
+			const inline = tokens.length > at + 2
+			const label = own.ts.get(cls)?.has(prop)
+				? `← перекрыто в ${own.tsFile}`
+				: inline
+					? ''
+					: declared.has(prop)
+					? `= ${shorten(declared.get(prop)!)}`
+					: await inherited(prop, base, blocks, own, load)
+			if (label) hints.push({ position: { line, character: size }, label, paddingLeft: true })
+		}
 	}
 	return hints
+}
+
+async function inherited(
+	prop: string,
+	base: string | undefined,
+	local: Map<string, Line[]>,
+	own: { ts: Map<string, Set<string>>; tsFile: string },
+	load: (cls: string) => Promise<ClassSource>,
+) {
+	for (let depth = 0; base && base.startsWith('$') && depth < 20; depth++) {
+		const src: ClassSource = local.has(base) ? { ts: own.ts.get(base), tsFile: own.tsFile } : await load(base)
+		if (src.ts?.has(prop)) return `← ${base}.${prop} в ${src.tsFile}`
+		const block = local.get(base) ?? (src.tree ? classBlocks(readLines(src.tree)).get(base) : undefined)
+		if (!block) return ''
+		const value = declarations(block).get(prop)
+		if (value !== undefined) return `← ${base}.${prop} = ${shorten(value)}`
+		base = block[0].tokens[1]
+	}
+	return ''
 }
 
 export type Deps = { files?: string[]; deps_out?: Record<string, Record<string, number>> }

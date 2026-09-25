@@ -49,7 +49,7 @@ import { sanitizeLineSpaces } from './format'
 import { extractTsProps } from './tsProps'
 import { indexStyleFile, removeStyleEntriesForUri } from './styleIndex'
 import { startStyleWs } from './styleWs'
-import { documentSymbols, bindingHints, flowMarkdown, findDepsDir } from './flow'
+import { documentSymbols, bindingHints, flowMarkdown, findDepsDir, type ClassSource } from './flow'
 
 const connection = createConnection(ProposedFeatures.all)
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument)
@@ -481,13 +481,27 @@ connection.languages.inlayHint.on(async params => {
 	const uri = params.textDocument.uri
 	const doc = documents.get(uri)
 	if (!doc || !/\.view\.tree$/.test(uri)) return []
+	const path = require('path') as typeof import('path')
+	const read = (file: string) => fs.readFile(file, 'utf8').catch(() => undefined)
 	const tsFs = uriToFsPath(uri).replace(/\.tree$/, '.ts')
-	const overridden = new Set<string>()
-	try {
-		for (const props of extractTsProps(await fs.readFile(tsFs, 'utf8')).values()) for (const p of props) overridden.add(p)
-	} catch {}
-	const hints = bindingHints(doc.getText(), overridden, require('path').basename(tsFs))
-	return hints.filter(h => h.position.line >= params.range.start.line && h.position.line <= params.range.end.line)
+	const tsText = await read(tsFs)
+	const own = { ts: tsText ? extractTsProps(tsText) : new Map<string, Set<string>>(), tsFile: path.basename(tsFs) }
+	const root = rootFor(uri)
+	const load = async (cls: string): Promise<ClassSource> => {
+		const parts = cls.replace(/^\$/, '').split('_')
+		const last = parts[parts.length - 1]
+		for (const dir of [path.join(root, ...parts), path.join(root, ...parts, last)]) {
+			const tree = await read(path.join(dir, `${last}.view.tree`))
+			for (const name of [`${last}.view.ts`, `${last}.ts`, `${last}.view.tsx`, `${last}.tsx`]) {
+				const text = await read(path.join(dir, name))
+				const ts = text ? extractTsProps(text).get(cls) : undefined
+				if (ts) return { tree, ts, tsFile: name }
+			}
+			if (tree) return { tree }
+		}
+		return {}
+	}
+	return bindingHints(doc.getText(), own, load, { start: params.range.start.line, end: params.range.end.line })
 })
 
 connection.onExecuteCommand(async params => {
