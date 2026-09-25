@@ -447,7 +447,7 @@ connection.onCodeAction(params => {
         return [];
     const flow = {
         title: 'Поток модуля',
-        kind: node_1.CodeActionKind.Source,
+        kind: node_1.CodeActionKind.QuickFix,
         command: { title: 'Поток модуля', command: 'viewtree.flow', arguments: [uri] },
     };
     const original = doc.getText();

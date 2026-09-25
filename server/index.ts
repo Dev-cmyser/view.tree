@@ -452,7 +452,7 @@ connection.onCodeAction(params => {
 	if (!doc) return []
 	const flow: CodeAction = {
 		title: 'Поток модуля',
-		kind: CodeActionKind.Source,
+		kind: CodeActionKind.QuickFix,
 		command: { title: 'Поток модуля', command: 'viewtree.flow', arguments: [uri] },
 	}
 	const original = doc.getText()
