@@ -53,10 +53,12 @@ const scan_1 = require("./scan");
 const tsProps_1 = require("./tsProps");
 const styleIndex_1 = require("./styleIndex");
 const styleWs_1 = require("./styleWs");
+const flow_1 = require("./flow");
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 const trees = new Map();
 let workspaceRoots = [];
+let canShowDocument = false;
 const log = (msg) => {
     connection.console.log(msg);
 };
@@ -78,6 +80,7 @@ connection.onInitialize((params) => {
     log(`[view.tree] onInitialize: workspace=${ws}`);
     const rootUris = params.workspaceFolders?.map(f => f.uri) ?? (params.rootUri ? [params.rootUri] : []);
     workspaceRoots = rootUris.map(resolver_1.uriToFsPath);
+    canShowDocument = !!params.capabilities.window?.showDocument?.support;
     return {
         capabilities: {
             textDocumentSync: {
@@ -114,6 +117,9 @@ connection.onInitialize((params) => {
                 full: true,
             },
             hoverProvider: true,
+            documentSymbolProvider: true,
+            inlayHintProvider: true,
+            executeCommandProvider: { commands: ['viewtree.flow'] },
         },
     };
 });
@@ -439,10 +445,15 @@ connection.onCodeAction(params => {
     const doc = documents.get(uri);
     if (!doc)
         return [];
+    const flow = {
+        title: 'Поток модуля',
+        kind: node_1.CodeActionKind.Source,
+        command: { title: 'Поток модуля', command: 'viewtree.flow', arguments: [uri] },
+    };
     const original = doc.getText();
     const formatted = (0, format_1.formatText)(original, uri);
     if (formatted === original)
-        return [];
+        return [flow];
     const edit = {
         range: { start: { line: 0, character: 0 }, end: doc.positionAt(original.length) },
         newText: formatted,
@@ -453,7 +464,50 @@ connection.onCodeAction(params => {
         edit: { changes: { [uri]: [edit] } },
         isPreferred: true,
     };
-    return [action];
+    return [action, flow];
+});
+connection.onDocumentSymbol(params => {
+    const doc = documents.get(params.textDocument.uri);
+    if (!doc || !/\.view\.tree$/.test(params.textDocument.uri))
+        return [];
+    return (0, flow_1.documentSymbols)(doc.getText());
+});
+connection.languages.inlayHint.on(async (params) => {
+    const uri = params.textDocument.uri;
+    const doc = documents.get(uri);
+    if (!doc || !/\.view\.tree$/.test(uri))
+        return [];
+    const tsFs = (0, resolver_1.uriToFsPath)(uri).replace(/\.tree$/, '.ts');
+    const overridden = new Set();
+    try {
+        for (const props of (0, tsProps_1.extractTsProps)(await fs.readFile(tsFs, 'utf8')).values())
+            for (const p of props)
+                overridden.add(p);
+    }
+    catch { }
+    const hints = (0, flow_1.bindingHints)(doc.getText(), overridden, require('path').basename(tsFs));
+    return hints.filter(h => h.position.line >= params.range.start.line && h.position.line <= params.range.end.line);
+});
+connection.onExecuteCommand(async (params) => {
+    if (params.command !== 'viewtree.flow')
+        return null;
+    const uri = String(params.arguments?.[0] ?? '');
+    const path = require('path');
+    const root = rootFor(uri);
+    const dir = root ? (0, flow_1.findDepsDir)((0, resolver_1.uriToFsPath)(uri), root) : null;
+    if (!dir) {
+        connection.window.showWarningMessage('Нет -/web.deps.json: соберите модуль, потом повторите');
+        return null;
+    }
+    const deps = JSON.parse(await fs.readFile(path.join(dir, '-', 'web.deps.json'), 'utf8'));
+    const target = path.join(dir, '-', 'flow.md');
+    await fs.writeFile(target, (0, flow_1.flowMarkdown)(path.relative(root, dir).split(path.sep).join('/'), deps));
+    log(`[flow] written ${target}`);
+    if (canShowDocument)
+        await connection.window.showDocument({ uri: (0, resolver_1.fsPathToUri)(target), takeFocus: true });
+    else
+        connection.window.showInformationMessage(`Поток записан в ${target}`);
+    return null;
 });
 // Format-on-save via WillSaveWaitUntil
 connection.onWillSaveTextDocumentWaitUntil(params => {
